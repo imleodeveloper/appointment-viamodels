@@ -13,7 +13,35 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    const { data: admin, error } = await supabase
+
+    const { data: user, error: errorUser } =
+      await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+    //console.log("User: ", user);
+
+    if (errorUser) {
+      console.error("Erro no login: ", errorUser.message);
+      return NextResponse.json({ error: errorUser.message }, { status: 401 });
+    }
+
+    return NextResponse.json(
+      {
+        user: {
+          id: user.user.id,
+          email: user.user.email,
+        },
+        session: {
+          access_token: user.session.access_token,
+          refresh_token: user.session.refresh_token,
+          expires_at: user.session.expires_at,
+        },
+      },
+      { status: 200 }
+    );
+    /* const { data: admin, error } = await supabase
       .from("admins")
       .select(
         `
@@ -22,22 +50,17 @@ export async function POST(req: Request) {
         `
       )
       .eq("email", email)
-      .single();
+      .single(); 
+      
+      if (error || !admin) {
+        return NextResponse.json(
+          { error: "Usuário não encontrado" },
+          { status: 401 }
+        );
+      }
+      */
 
-    if (error || !admin) {
-      return NextResponse.json(
-        { error: "Usuário não encontrado" },
-        { status: 401 }
-      );
-    }
-
-    const isMatch = await bcrypt.compare(password, admin.password_hash);
-
-    if (!isMatch) {
-      return NextResponse.json({ error: "Senha incorreta" }, { status: 401 });
-    }
-
-    // Retornar informações do admin incluindo role e professional_id
+    /*/ Retornar informações do admin incluindo role e professional_id
     return NextResponse.json(
       {
         success: true,
@@ -51,7 +74,7 @@ export async function POST(req: Request) {
         },
       },
       { status: 200 }
-    );
+    ); */
   } catch (error) {
     console.error("Erro na API de login:", error);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });

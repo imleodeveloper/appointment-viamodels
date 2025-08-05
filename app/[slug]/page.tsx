@@ -34,16 +34,13 @@ export default function HomePage() {
       });
 
       const data = await response.json();
-      // Verifica no banco de dados se existe esse slug
-      const { data: slugExist, error: slugError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("slug_link", slug);
 
-      if (slugError || !slugExist) {
-        console.log("Slug não encontrado: ", slugError);
+      if (data.return_link) {
+        window.location.href = data.return_link;
       }
-    } catch (err) {}
+    } catch (err) {
+      console.error("Não foi possível fazer contato com o servidor. ", err);
+    }
   };
 
   const autoCompletePastAppointments = async () => {
@@ -131,7 +128,7 @@ export default function HomePage() {
             fácil
           </p>
           <div className="flex justify-center space-x-4">
-            <Link href="/meus-agendamentos">
+            <Link href={`/${slug}/meus-agendamentos`}>
               <Button
                 variant="outline"
                 className="bg-white text-main-purple hover:bg-gray-100 border-white dark:hover:bg-gray-400 dark:hover:text-black"

@@ -9,11 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { usePhoneMask } from "@/hooks/use-phone-mask";
+import { useParams } from "next/navigation";
 
 export function QuickSearch() {
   const router = useRouter();
   const phoneInput = usePhoneMask();
   const [loading, setLoading] = useState(false);
+  const { slug } = useParams();
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +30,7 @@ export function QuickSearch() {
     try {
       // Store phone in session storage for the appointments page
       sessionStorage.setItem("searchPhone", phoneInput.getUnmaskedValue());
-      router.push("/meus-agendamentos");
+      router.push(`${slug}/meus-agendamentos`);
     } catch (error) {
       console.error("Erro ao buscar agendamentos:", error);
       alert("Erro ao buscar agendamentos. Tente novamente.");

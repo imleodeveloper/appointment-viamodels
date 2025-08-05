@@ -8,9 +8,8 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Agenda Online - Sistema de Agendamentos",
-  description:
-    "Sistema completo de agendamentos para salões, clínicas e consultórios",
-  generator: "v0.dev",
+  description: "Sistema completo de agendamentos para diversos comércios",
+  generator: "VierCa Tech",
 };
 
 export default function RootLayout({

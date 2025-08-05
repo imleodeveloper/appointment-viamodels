@@ -1,42 +1,39 @@
 "use client";
-
-import type React from "react";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import {
-  LogIn,
-  Calendar,
-  Users,
-  Settings,
-  UserPlus,
-  Trash2,
-  Shield,
-  Edit,
-  DollarSign,
-  Clock,
-  Plus,
-  Mail,
-  Phone,
-  Moon,
-  Sun,
-  BarChart3,
-  Menu,
-  X,
-  ChevronLeft,
-  Filter,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { supabase, type Appointment } from "@/lib/supabase";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+	DialogTrigger,
 } from "@/components/ui/dialog";
+import { LoginAdmin } from "./components/login-admin";
+import { formatMonthLabel } from "./lib/format-month-label";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useTheme } from "@/contexts/theme-context";
+import {
+  Badge,
+  BarChart3,
+  Calendar,
+  ChevronLeft,
+  DollarSign,
+  Filter,
+  LogIn,
+  Menu,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+  Settings,
+  Shield,
+  Sun,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react";
+import React, { useEffect, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -44,37 +41,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useTheme } from "@/contexts/theme-context";
+import { supabase, type Appointment } from "@/lib/supabase";
+import { formatDate } from "./lib/format-date";
+import { getStatusText } from "./lib/get-status-text";
+import { getStatusColor } from "./lib/get-status-color";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import {
-  BarChart,
   Bar,
+  BarChart,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
   XAxis,
   YAxis,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
 } from "recharts";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-interface Admin {
-  id: string;
-  email: string;
-  name: string;
-  role: "admin" | "super_admin";
-  professional_id?: string;
-  professional?: {
-    name: string;
-  };
-  created_at: string;
-}
 
 interface UserProfile {
   id: string;
@@ -125,34 +111,61 @@ interface ServiceProfessionalData {
   count: number;
   value: number;
 }
-
 interface ServiceDetail {
   serviceName: string;
   professionals: ServiceProfessionalData[];
 }
 
-export default function AdminPage() {
+export default function AdministratorPage() {
   const { theme, toggleTheme } = useTheme();
-  const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentAdmin, setCurrentAdmin] = useState<Admin | null>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  // MENU ABAIXO
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const menuItems = [
+    { id: "appointments", label: "Agendamentos", icon: Calendar },
+    { id: "reports", label: "Relatórios", icon: BarChart3 },
+    { id: "admins", label: "Administradores", icon: Shield },
+    { id: "professionals", label: "Profissionais", icon: Users },
+    { id: "services", label: "Serviços", icon: Settings },
+  ];
+  const [activeTab, setActiveTab] = useState("appointments");
+  // LOGIN ABAIXO
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  // FETCHS ABAIXO
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [admins, setAdmins] = useState<Admin[]>([]);
-  const [professionals, setProfessionals] = useState<Professional[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [allServices, setAllServices] = useState<Service[]>([]);
+  //Services ABAIXO
+		const [editingService, setEditingService] = useState<Service | null>(null);
+  const [selectedServiceDetail, setSelectedServiceDetail] =
+    useState<ServiceDetail | null>(null);
+	const [isCreateServiceOpen, setIsCreateServiceOpen] = useState(false);
+	const [isEditServiceOpen, setIsEditServiceOpen] = useState(false);
+		const [serviceForm, setServiceForm] = useState({
+			name: "",
+			duration_minutes: "",
+			price: "",
+			category: "beauty",
+			professionalIds: [] as string[],
+		});
+	//Professionals ABAIXO
+		const [editingProfessional, setEditingProfessional] =
+			useState<Professional | null>(null);
+	const [professionals, setProfessionals] = useState<Professional[]>([]);
+	const [isCreateProfessionalOpen, setIsCreateProfessionalOpen] =
+		useState(false);
+	const [isEditProfessionalOpen, setIsEditProfessionalOpen] = useState(false);
+		const [professionalForm, setProfessionalForm] = useState({
+			name: "",
+			email: "",
+			phone: "",
+			specialties: "",
+			serviceIds: [] as string[],
+		});
+  // Reports ABAIXO
   const [monthlyReport, setMonthlyReport] = useState<MonthlyReport | null>(
     null
   );
-
-  // Sidebar state
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("appointments");
-
-  // Reports state
   const [activeReportTab, setActiveReportTab] = useState("overview");
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
@@ -162,199 +175,241 @@ export default function AdminPage() {
     )}`;
   });
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
-  const [selectedServiceDetail, setSelectedServiceDetail] =
-    useState<ServiceDetail | null>(null);
 
-  // Estados dialogos
-  const [isCreateAdminOpen, setIsCreateAdminOpen] = useState(false);
-  const [isCreateProfessionalOpen, setIsCreateProfessionalOpen] =
-    useState(false);
-  const [isEditProfessionalOpen, setIsEditProfessionalOpen] = useState(false);
-  const [isCreateServiceOpen, setIsCreateServiceOpen] = useState(false);
-  const [isEditServiceOpen, setIsEditServiceOpen] = useState(false);
 
-  // Form states for creating admin
-  const [newAdminEmail, setNewAdminEmail] = useState("");
-  const [newAdminPassword, setNewAdminPassword] = useState("");
-  const [newAdminName, setNewAdminName] = useState("");
-  const [newAdminRole, setNewAdminRole] = useState<"admin" | "super_admin">(
-    "admin"
-  );
-  const [newAdminProfessionalId, setNewAdminProfessionalId] = useState("");
+	// LOGIN E LOGOUT
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-  // Form states for professional
-  const [editingProfessional, setEditingProfessional] =
-    useState<Professional | null>(null);
-  const [professionalForm, setProfessionalForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    specialties: "",
-    serviceIds: [] as string[],
-  });
-
-  // Form states for service
-  const [editingService, setEditingService] = useState<Service | null>(null);
-  const [serviceForm, setServiceForm] = useState({
-    name: "",
-    duration_minutes: "",
-    price: "",
-    category: "beauty",
-    professionalIds: [] as string[],
-  });
-
-  const menuItems =
-    currentAdmin?.role === "super_admin"
-      ? [
-          { id: "appointments", label: "Agendamentos", icon: Calendar },
-          { id: "reports", label: "Relatórios", icon: BarChart3 },
-          { id: "admins", label: "Administradores", icon: Shield },
-          { id: "professionals", label: "Profissionais", icon: Users },
-          { id: "services", label: "Serviços", icon: Settings },
-        ]
-      : [
-          { id: "appointments", label: "Agendamentos", icon: Calendar },
-          { id: "reports", label: "Relatórios", icon: BarChart3 },
-          { id: "services", label: "Serviços", icon: Settings },
-        ];
-
-  /*useEffect(() => {
-    // Verifica se já está autenticado
-    const authStatus = sessionStorage.getItem("adminAuth");
-    if (authStatus) {
-      const adminData = JSON.parse(authStatus);
-      setCurrentAdmin(adminData);
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || "Erro ao autenticar");
+        return;
+      }
       setIsAuthenticated(true);
-      fetchAppointments(adminData);
-      if (adminData.role === "super_admin") {
-        fetchAdmins();
-      }
-      fetchProfessionals();
-      fetchServices(adminData);
-      fetchAllServices();
-      fetchAvailableMonths(adminData);
-      fetchMonthlyReport(adminData, selectedMonth);
-    }
-  }, []);*/
-
-  useEffect(() => {
-    if (currentAdmin) {
-      fetchMonthlyReport(currentAdmin, selectedMonth);
-    }
-  }, [selectedMonth]);
-
-  const fetchAvailableMonths = async (admin: Admin) => {
-    try {
-      let query = supabase
-        .from("appointments")
-        .select("appointment_date")
-        .order("appointment_date", { ascending: false });
-
-      // Se for admin normal, filtrar apenas agendamentos do seu profissional
-      if (admin.role === "admin" && admin.professional_id) {
-        query = query.eq("professional_id", admin.professional_id);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      const months = new Set<string>();
-      data?.forEach((appointment) => {
-        const date = new Date(appointment.appointment_date);
-        const monthKey = `${date.getFullYear()}-${String(
-          date.getMonth() + 1
-        ).padStart(2, "0")}`;
-        months.add(monthKey);
-      });
-
-      setAvailableMonths(Array.from(months).sort().reverse());
     } catch (error) {
-      console.error("Erro ao carregar meses disponíveis:", error);
+      console.log("Erro ao fazer login: ", error);
+      alert("Erro ao fazer login." + error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setEmail("");
+    setPassword("");
+  };
+
+	//APPOINTMENTS
+  const fetchAppointments = async (user: UserProfile) => {
+    try {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select(`*`)
+        .order("appointment_date", { ascending: true })
+        .order("appointment_time", { ascending: true });
+
+      if (error) {
+        console.log("Erro ao buscar agendamentos.", error);
+        throw error;
+      }
+      setAppointments(data || []);
+    } catch (err) {
+      console.error("Erro ao carregar agendamentos: ", err);
+      alert("Erro ao buscar agendamentos.");
     }
   };
 
-  const fetchMonthlyReport = async (admin: Admin, monthKey: string) => {
+  const updateAppointmentStatus = async (
+    appointmentId: string,
+    newStatus: string
+  ) => {
     try {
-      const [year, month] = monthKey.split("-");
-      const firstDay = new Date(
-        Number.parseInt(year),
-        Number.parseInt(month) - 1,
-        1
-      );
-      const lastDay = new Date(
-        Number.parseInt(year),
-        Number.parseInt(month),
-        0
-      );
-
-      let query = supabase
+      const { error } = await supabase
         .from("appointments")
-        .select(
-          `
-          *,
-          service:services(name, price),
-          professional:professionals(name)
-        `
+        .update({ status: newStatus })
+        .eq("id", appointmentId);
+
+      if (error) {
+        console.log(
+          "Não foi possível atualizar os status do agendamento: ",
+          error
+        );
+        throw error;
+      }
+
+      // Atualiza o estado local
+      setAppointments((prev) =>
+        prev.map((appointment) =>
+          appointment.id === appointmentId
+            ? { ...appointment, status: newStatus }
+            : appointment
         )
-        .gte("appointment_date", firstDay.toISOString().split("T")[0])
-        .lte("appointment_date", lastDay.toISOString().split("T")[0]);
-
-      // Se for admin normal, filtrar apenas agendamentos do seu profissional
-      if (admin.role === "admin" && admin.professional_id) {
-        query = query.eq("professional_id", admin.professional_id);
-      }
-
-      const { data: monthlyAppointments, error } = await query;
-
-      if (error) throw error;
-
-      const cancelamentos =
-        monthlyAppointments?.filter((apt) => apt.status === "cancelled")
-          .length || 0;
-      const concluidos =
-        monthlyAppointments?.filter((apt) => apt.status === "completed")
-          .length || 0;
-
-      const valorTotal =
-        monthlyAppointments
-          ?.filter((apt) => apt.status === "completed")
-          .reduce((total, apt) => total + (apt.service?.price || 0), 0) || 0;
-
-      // Contar serviços utilizados
-      const serviceCount: { [key: string]: { count: number; value: number } } =
-        {};
-
-      monthlyAppointments?.forEach((apt) => {
-        if (apt.service?.name) {
-          if (!serviceCount[apt.service.name]) {
-            serviceCount[apt.service.name] = { count: 0, value: 0 };
-          }
-          serviceCount[apt.service.name].count++;
-          if (apt.status === "completed") {
-            serviceCount[apt.service.name].value += apt.service.price || 0;
-          }
-        }
-      });
-
-      const sortedServices = Object.entries(serviceCount)
-        .map(([name, data]) => ({ name, ...data }))
-        .sort((a, b) => b.count - a.count);
-
-      const servicosMaisUtilizados = sortedServices.slice(0, 5);
-      const servicosMenosUtilizados = sortedServices.slice(-5).reverse();
-
-      setMonthlyReport({
-        cancelamentos,
-        concluidos,
-        valorTotal,
-        servicosMaisUtilizados,
-        servicosMenosUtilizados,
-      });
-    } catch (error) {
-      console.error("Erro ao carregar relatório mensal:", error);
+      );
+    } catch (err) {
+      console.error("Erro ao atualizar status:", err);
+      alert("Erro ao atualizar status. Tente novamente.");
     }
   };
+
+  const deleteAppointment = async (appointmentId: string) => {
+    if (!confirm("Tem certeza que deseja excluir este agendamento?")) return;
+
+    try {
+      const response = await fetch("/api/admin/manage-admins", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId, action: "delete" }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        alert(data.error || "Erro ao excluir agendamento");
+        return;
+      }
+
+      setAppointments((prev) =>
+        prev.filter((appointment) => appointment.id !== appointmentId)
+      );
+      alert("Agendamento excluído com sucesso!");
+    } catch (err) {
+      console.error("Erro ao excluir agendamento: ", err);
+      alert("Erro ao excluir agendamento.");
+    }
+  };
+
+	//PROFESSIONALS
+	const fetchProfessionals = async () => {
+		try{
+			const response = await fetch("/api/professionals");
+			const data = await response.json();
+
+			if(response.ok){
+				setProfessionals(data.professionals || []);
+			}
+		}catch(error){
+			console.error("Erro ao carregar profissionais: ", error);
+		}
+	}
+
+	const handleCreateProfessional = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setLoading(true);
+		try{
+			const response = await fetch("/api/professionals", {
+				method: "POST",
+				headers: {"Content-Type": "application/json"},
+				body: JSON.stringify({
+					name: professionalForm.name,
+					email: professionalForm.email || null,
+					phone: professionalForm.phone || null,
+					specialties: professionalForm.specialties
+					.split(",")
+					.map((s) => s.trim())
+					.filter((s) => s),
+					serviceIds: professionalForm.serviceIds,
+				}),
+			});
+
+			const data = await response.json();
+			if(!response.ok){
+				alert(data.error || "Erro ao criar profissional");
+				return;
+			}
+
+			alert("Profissional criado com sucesso!");
+			setIsCreateProfessionalOpen(false);
+			resetProfessionalForm();
+			fetchProfessionals();
+			
+		}catch(err){
+			console.error("Erro ao criar profissional: ", err);
+			alert("Erro ao criar profissional. ");
+		} finally{
+			setLoading(false);
+		}
+	}
+
+	const handleEditProfessional = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if(!editingProfessional) return;
+		setLoading(true);
+
+		try{
+			const response = await fetch("/api/professionals", {
+				method: "PUT",
+				headers: { "Content-Type": "application/json"},
+				body: JSON.stringify({
+					id: editingProfessional.id,
+					name: professionalForm.name,
+					email: professionalForm.email || null,
+					phone: professionalForm.phone || null,
+					specialties: professionalForm.specialties
+					.split(",")
+					.map((s) => s.trim())
+					.filter((s) => s),
+					serviceIds: professionalForm.serviceIds || null,
+				}),
+			});
+
+			const data = await response.json();
+			if(!response.ok){
+				alert(data.error || "Erro ao atualizar profissional");
+				return;
+			}
+
+			alert("Profissional atualizado com sucesso!");
+      setIsEditProfessionalOpen(false);
+      resetProfessionalForm();
+      setEditingProfessional(null);
+      fetchProfessionals();
+		}catch(err){
+			console.error("Erro ao atualizar profissional:", err);
+      alert("Erro ao atualizar profissional.");
+		} finally{
+			setLoading(false);
+		}
+	}
+
+	const handleDeleteProfessional = async (professionalId: string) => {
+		if(!confirm("Tem certeza que deseja excluir este profissional?")) return;
+	
+		try{
+			const response = await fetch(`/api/professionals?id=${professionalId}`, {
+				method: "DELETE",
+			});
+
+			if(!response.ok){
+				const data = await response.json();
+				alert(data.error || "Erro ao excluir profissional");
+        return;
+			}
+
+			alert("Profissional excluído com sucesso!");
+      fetchProfessionals();
+			
+		}catch(error){
+			console.error("Erro ao excluir profissional: ", error);
+			alert("Erro ao excluir profissional.");
+		}
+	}
+
+	const resetProfessionalForm = () => {
+		setProfessionalForm({
+			name: "",
+			email: "",
+			phone: "",
+			specialties: "",
+			serviceIds: [],
+		})
+	}
 
   const fetchServiceProfessionalDetail = async (
     serviceName: string,
@@ -373,30 +428,25 @@ export default function AdminPage() {
         0
       );
 
-      let query = supabase
+      const { data: appointments, error } = await supabase
         .from("appointments")
         .select(
           `
-          *,
-          service:services(name, price),
-          professional:professionals(name)
-        `
+					*, 
+					service:services(name, price), 
+					professional:professionals(name)
+					`
         )
         .gte("appointment_date", firstDay.toISOString().split("T")[0])
         .lte("appointment_date", lastDay.toISOString().split("T")[0]);
 
-      // Se for admin normal, filtrar apenas agendamentos do seu profissional
-      if (currentAdmin?.role === "admin" && currentAdmin.professional_id) {
-        query = query.eq("professional_id", currentAdmin.professional_id);
+      if (error) {
+        throw error;
       }
-
-      const { data: appointments, error } = await query;
-
-      if (error) throw error;
 
       // Filtrar apenas os agendamentos do serviço específico
       const serviceAppointments =
-        appointments?.filter((apt) => apt.service?.name === serviceName) || [];
+        appointments.filter((apt) => apt.service?.name === serviceName) || [];
 
       // Agrupar por profissional
       const professionalData: {
@@ -431,446 +481,108 @@ export default function AdminPage() {
     }
   };
 
-  const formatMonthLabel = (monthKey: string) => {
-    const [year, month] = monthKey.split("-");
-    const date = new Date(Number.parseInt(year), Number.parseInt(month) - 1);
-    return date.toLocaleDateString("pt-BR", {
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+	const handleCreateService = async (e: React.FormEvent) => {
+			e.preventDefault();
+			setLoading(true);
+	
+			try {
+				const res = await fetch("/api/services", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						name: serviceForm.name,
+						duration_minutes: serviceForm.duration_minutes,
+						price: serviceForm.price || null,
+						category: serviceForm.category,
+						professionalIds: serviceForm.professionalIds,
+					}),
+				});
+	
+				const data = await res.json();
+				if (!res.ok) {
+					alert(data.error || "Erro ao criar serviço");
+					return;
+				}
+	
+				alert("Serviço criado com sucesso!");
+				setIsCreateServiceOpen(false);
+				resetServiceForm();
+				fetchServices();
+				fetchAllServices();
+			} catch (error) {
+				console.error("Erro ao criar serviço:", error);
+				alert("Erro ao criar serviço.");
+			} finally {
+				setLoading(false);
+			}
+		};
 
-    try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+		const handleEditService = async (e: React.FormEvent) => {
+				e.preventDefault();
+				if (!editingService) return;
+				setLoading(true);
+		
+				try {
+					const res = await fetch("/api/services", {
+						method: "PUT",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							id: editingService.id,
+							name: serviceForm.name,
+							duration_minutes: serviceForm.duration_minutes,
+							price: serviceForm.price || null,
+							category: serviceForm.category,
+							professionalIds: serviceForm.professionalIds,
+							adminRole: currentAdmin?.role,
+							adminProfessionalId: currentAdmin?.professional_id,
+						}),
+					});
+		
+					const data = await res.json();
+					if (!res.ok) {
+						alert(data.error || "Erro ao atualizar serviço");
+						return;
+					}
+		
+					alert("Serviço atualizado com sucesso!");
+					setIsEditServiceOpen(false);
+					resetServiceForm();
+					setEditingService(null);
+					fetchServices(currentAdmin!);
+					fetchAllServices();
+				} catch (error) {
+					console.error("Erro ao atualizar serviço:", error);
+					alert("Erro ao atualizar serviço.");
+				} finally {
+					setLoading(false);
+				}
+			};
+		
+			const handleDeleteService = async (serviceId: string) => {
+				if (!confirm("Tem certeza que deseja excluir este serviço?")) return;
+		
+				try {
+					const res = await fetch(`/api/services?id=${serviceId}`, {
+						method: "DELETE",
+					});
+		
+					if (!res.ok) {
+						const data = await res.json();
+						alert(data.error || "Erro ao excluir serviço");
+						return;
+					}
+		
+					alert("Serviço excluído com sucesso!");
+					fetchServices(currentAdmin!);
+					fetchAllServices();
+				} catch (error) {
+					console.error("Erro ao excluir serviço:", error);
+					alert("Erro ao excluir serviço.");
+				}
+			};
 
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Erro ao autenticar");
-        return;
-      }
-
-      //sessionStorage.setItem("adminAuth", JSON.stringify(data.admin));
-      //setCurrentAdmin(data.admin);
-      setIsAuthenticated(true);
-      //fetchAppointments(data.admin);
-      //if (data.admin.role === "super_admin") {
-      //  fetchAdmins();
-      //}
-      fetchProfessionals();
-      //fetchServices(data.admin);
-      fetchAllServices();
-      //fetchAvailableMonths(data.admin);
-      //fetchMonthlyReport(data.admin, selectedMonth);
-    } catch (error) {
-      console.error("Erro no login:", error);
-      alert("Erro ao fazer login.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    //sessionStorage.removeItem("adminAuth");
-    setIsAuthenticated(false);
-    //setCurrentAdmin(null);
-    setEmail("");
-    setPassword("");
-  };
-
-  const fetchAppointments = async (admin: Admin) => {
-    try {
-      let query = supabase
-        .from("appointments")
-        .select(
-          `
-          *,
-          service:services(*),
-          professional:professionals(*)
-        `
-        )
-        .order("appointment_date", { ascending: true })
-        .order("appointment_time", { ascending: true });
-
-      // Se for admin normal, filtrar apenas agendamentos do seu profissional
-      if (admin.role === "admin" && admin.professional_id) {
-        query = query.eq("professional_id", admin.professional_id);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setAppointments(data || []);
-    } catch (error) {
-      console.error("Erro ao carregar agendamentos:", error);
-    }
-  };
-
-  const fetchAdmins = async () => {
-    try {
-      const res = await fetch("/api/admin/manage-admins");
-      const data = await res.json();
-      if (res.ok) {
-        setAdmins(data.admins || []);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar admins:", error);
-    }
-  };
-
-  const fetchProfessionals = async () => {
-    try {
-      const res = await fetch("/api/professionals");
-      const data = await res.json();
-      if (res.ok) {
-        setProfessionals(data.professionals || []);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar profissionais:", error);
-    }
-  };
-
-  const fetchServices = async (admin: Admin) => {
-    try {
-      let url = "/api/services";
-      if (admin.role === "admin" && admin.professional_id) {
-        url += `?professional_id=${admin.professional_id}`;
-      }
-
-      const res = await fetch(url);
-      const data = await res.json();
-      if (res.ok) {
-        setServices(data.services || []);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar serviços:", error);
-    }
-  };
-
-  const fetchAllServices = async () => {
-    try {
-      const res = await fetch("/api/services");
-      const data = await res.json();
-      if (res.ok) {
-        setAllServices(data.services || []);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar todos os serviços:", error);
-    }
-  };
-
-  // ... (manter todas as outras funções como handleCreateAdmin, handleDeleteAdmin, etc.)
-  const handleCreateAdmin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/admin/manage-admins", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: newAdminEmail,
-          password: newAdminPassword,
-          name: newAdminName,
-          role: newAdminRole,
-          professional_id: newAdminProfessionalId || null,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Erro ao criar admin");
-        return;
-      }
-
-      alert("Admin criado com sucesso!");
-      setIsCreateAdminOpen(false);
-      resetAdminForm();
-      fetchAdmins();
-    } catch (error) {
-      console.error("Erro ao criar admin:", error);
-      alert("Erro ao criar admin.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteAdmin = async (adminId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este admin?")) return;
-
-    try {
-      const res = await fetch(`/api/admin/manage-admins?id=${adminId}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        alert(data.error || "Erro ao excluir admin");
-        return;
-      }
-
-      alert("Admin excluído com sucesso!");
-      fetchAdmins();
-    } catch (error) {
-      console.error("Erro ao excluir admin:", error);
-      alert("Erro ao excluir admin.");
-    }
-  };
-
-  const deleteAppointment = async (appointmentId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este agendamento?")) return;
-
-    try {
-      const res = await fetch("/api/admin/manage-admins", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          appointmentId,
-          action: "delete",
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        alert(data.error || "Erro ao excluir agendamento");
-        return;
-      }
-
-      setAppointments((prev) => prev.filter((apt) => apt.id !== appointmentId));
-      alert("Agendamento excluído com sucesso!");
-    } catch (error) {
-      console.error("Erro ao excluir agendamento:", error);
-      alert("Erro ao excluir agendamento.");
-    }
-  };
-
-  const handleCreateProfessional = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/professionals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: professionalForm.name,
-          email: professionalForm.email || null,
-          phone: professionalForm.phone || null,
-          specialties: professionalForm.specialties
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s),
-          serviceIds: professionalForm.serviceIds,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Erro ao criar profissional");
-        return;
-      }
-
-      alert("Profissional criado com sucesso!");
-      setIsCreateProfessionalOpen(false);
-      resetProfessionalForm();
-      fetchProfessionals();
-    } catch (error) {
-      console.error("Erro ao criar profissional:", error);
-      alert("Erro ao criar profissional.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditProfessional = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingProfessional) return;
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/professionals", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editingProfessional.id,
-          name: professionalForm.name,
-          email: professionalForm.email || null,
-          phone: professionalForm.phone || null,
-          specialties: professionalForm.specialties
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s),
-          serviceIds: professionalForm.serviceIds,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Erro ao atualizar profissional");
-        return;
-      }
-
-      alert("Profissional atualizado com sucesso!");
-      setIsEditProfessionalOpen(false);
-      resetProfessionalForm();
-      setEditingProfessional(null);
-      fetchProfessionals();
-    } catch (error) {
-      console.error("Erro ao atualizar profissional:", error);
-      alert("Erro ao atualizar profissional.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteProfessional = async (professionalId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este profissional?")) return;
-
-    try {
-      const res = await fetch(`/api/professionals?id=${professionalId}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        alert(data.error || "Erro ao excluir profissional");
-        return;
-      }
-
-      alert("Profissional excluído com sucesso!");
-      fetchProfessionals();
-    } catch (error) {
-      console.error("Erro ao excluir profissional:", error);
-      alert("Erro ao excluir profissional.");
-    }
-  };
-
-  const handleCreateService = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/services", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: serviceForm.name,
-          duration_minutes: serviceForm.duration_minutes,
-          price: serviceForm.price || null,
-          category: serviceForm.category,
-          professionalIds: serviceForm.professionalIds,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Erro ao criar serviço");
-        return;
-      }
-
-      alert("Serviço criado com sucesso!");
-      setIsCreateServiceOpen(false);
-      resetServiceForm();
-      fetchServices(currentAdmin!);
-      fetchAllServices();
-    } catch (error) {
-      console.error("Erro ao criar serviço:", error);
-      alert("Erro ao criar serviço.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditService = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingService) return;
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/services", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editingService.id,
-          name: serviceForm.name,
-          duration_minutes: serviceForm.duration_minutes,
-          price: serviceForm.price || null,
-          category: serviceForm.category,
-          professionalIds: serviceForm.professionalIds,
-          adminRole: currentAdmin?.role,
-          adminProfessionalId: currentAdmin?.professional_id,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Erro ao atualizar serviço");
-        return;
-      }
-
-      alert("Serviço atualizado com sucesso!");
-      setIsEditServiceOpen(false);
-      resetServiceForm();
-      setEditingService(null);
-      fetchServices(currentAdmin!);
-      fetchAllServices();
-    } catch (error) {
-      console.error("Erro ao atualizar serviço:", error);
-      alert("Erro ao atualizar serviço.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteService = async (serviceId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este serviço?")) return;
-
-    try {
-      const res = await fetch(`/api/services?id=${serviceId}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        alert(data.error || "Erro ao excluir serviço");
-        return;
-      }
-
-      alert("Serviço excluído com sucesso!");
-      fetchServices(currentAdmin!);
-      fetchAllServices();
-    } catch (error) {
-      console.error("Erro ao excluir serviço:", error);
-      alert("Erro ao excluir serviço.");
-    }
-  };
-
-  const resetAdminForm = () => {
-    setNewAdminEmail("");
-    setNewAdminPassword("");
-    setNewAdminName("");
-    setNewAdminRole("admin");
-    setNewAdminProfessionalId("");
-  };
-
-  const resetProfessionalForm = () => {
-    setProfessionalForm({
-      name: "",
-      email: "",
-      phone: "",
-      specialties: "",
-      serviceIds: [],
-    });
-  };
-
-  const resetServiceForm = () => {
+			  const resetServiceForm = () => {
     setServiceForm({
       name: "",
       duration_minutes: "",
@@ -878,97 +590,6 @@ export default function AdminPage() {
       category: "beauty",
       professionalIds: [],
     });
-  };
-
-  const openEditProfessional = (professional: Professional) => {
-    setEditingProfessional(professional);
-    setProfessionalForm({
-      name: professional.name,
-      email: professional.email || "",
-      phone: professional.phone || "",
-      specialties: professional.specialties?.join(", ") || "",
-      serviceIds:
-        professional.professional_services?.map((ps) => ps.service.id) || [],
-    });
-    setIsEditProfessionalOpen(true);
-  };
-
-  const openEditService = (service: Service) => {
-    setEditingService(service);
-    setServiceForm({
-      name: service.name,
-      duration_minutes: service.duration_minutes.toString(),
-      price: service.price?.toString() || "",
-      category: service.category,
-      professionalIds:
-        service.professional_services?.map((ps) => ps.professional.id) || [],
-    });
-    setIsEditServiceOpen(true);
-  };
-
-  const formatDate = (dateStr: string) => {
-    const [year, month, day] = dateStr.split("-");
-    const date = new Date(Number(year), Number(month) - 1, Number(day));
-    return date.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "scheduled":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "cancelled":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      case "completed":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "scheduled":
-        return "Agendado";
-      case "cancelled":
-        return "Cancelado";
-      case "completed":
-        return "Concluído";
-      default:
-        return status;
-    }
-  };
-
-  const updateAppointmentStatus = async (
-    appointmentId: string,
-    newStatus: string
-  ) => {
-    try {
-      const { error } = await supabase
-        .from("appointments")
-        .update({ status: newStatus })
-        .eq("id", appointmentId);
-
-      if (error) throw error;
-
-      // Update local state
-      setAppointments((prev) =>
-        prev.map((apt) =>
-          apt.id === appointmentId ? { ...apt, status: newStatus } : apt
-        )
-      );
-
-      // Refresh monthly report if status changed
-      if (currentAdmin) {
-        fetchMonthlyReport(currentAdmin, selectedMonth);
-      }
-    } catch (error) {
-      console.error("Erro ao atualizar status:", error);
-      alert("Erro ao atualizar status. Tente novamente.");
-    }
   };
 
   if (!isAuthenticated) {
@@ -1407,12 +1028,12 @@ export default function AdminPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-gray-900 dark:text-white">
                 Agendamentos ({appointments.length})
-                {currentAdmin?.role === "admin" &&
+                {/*currentAdmin?.role === "admin" &&
                   currentAdmin.professional && (
                     <span className="text-sm font-normal text-gray-600 dark:text-gray-400 ml-2">
                       - {currentAdmin.professional.name}
                     </span>
-                  )}
+                  )*/}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1511,18 +1132,16 @@ export default function AdminPage() {
                                 </Button>
                               </>
                             )}
-                            {currentAdmin?.role === "super_admin" && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  deleteAppointment(appointment.id)
-                                }
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
+                            {/*currentAdmin?.role === "super_admin" && (
+														)*/}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => deleteAppointment(appointment.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -1546,7 +1165,7 @@ export default function AdminPage() {
       case "reports":
         return renderReportsContent();
 
-      case "admins":
+      /*case "admins":
         return currentAdmin?.role === "super_admin" ? (
           <Card className="bg-white dark:bg-gray-800">
             <CardHeader className="flex flex-row items-center justify-between">
@@ -1733,10 +1352,10 @@ export default function AdminPage() {
               </div>
             </CardContent>
           </Card>
-        ) : null;
+        ) : null;*/
 
       case "professionals":
-        return currentAdmin?.role === "super_admin" ? (
+        return (
           <Card className="bg-white dark:bg-gray-800">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-gray-900 dark:text-white">
@@ -2553,7 +2172,7 @@ export default function AdminPage() {
       <div
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg transform ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}
+        } transition-transform duration-300 ease-in-out`}
       >
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -2563,9 +2182,8 @@ export default function AdminPage() {
             variant="ghost"
             size="sm"
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden"
           >
-            <X className="h-4 w-4" />
+            <PanelLeftClose className="h-4 w-4" />
           </Button>
         </div>
 
@@ -2614,29 +2232,18 @@ export default function AdminPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden"
                 >
-                  <Menu className="h-4 w-4" />
+                  <PanelLeftOpen className="h-4 w-4" />
                 </Button>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                   {menuItems.find((item) => item.id === activeTab)?.label ||
                     "Painel Administrativo"}
                 </h1>
-                <Badge
-                  variant={
-                    currentAdmin?.role === "super_admin"
-                      ? "default"
-                      : "secondary"
-                  }
-                >
-                  {currentAdmin?.role === "super_admin"
-                    ? "Super Admin"
-                    : "Admin"}
-                </Badge>
+                <Badge></Badge>
               </div>
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {currentAdmin?.name}
+                  {"Fulano"}
                 </span>
                 <Button
                   variant="outline"
@@ -2663,7 +2270,7 @@ export default function AdminPage() {
         </header>
 
         {/* Page Content */}
-        <main className="p-6">{renderContent()}</main>
+        <main className="p-6">{/*renderContent()*/}</main>
       </div>
     </div>
   );

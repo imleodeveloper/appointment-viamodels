@@ -20,6 +20,7 @@ import { Header } from "@/components/header";
 import { supabase, type Appointment } from "@/lib/supabase";
 import { usePhoneMask } from "@/hooks/use-phone-mask";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
 export default function MyAppointmentsPage() {
   const phoneInput = usePhoneMask();
@@ -27,6 +28,7 @@ export default function MyAppointmentsPage() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [newAppointmentId, setNewAppointmentId] = useState<string | null>(null);
+  const { slug } = useParams();
 
   useEffect(() => {
     // Check if there's a phone number from quick search
@@ -344,7 +346,7 @@ export default function MyAppointmentsPage() {
                   <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
                     Que tal fazer seu primeiro agendamento?
                   </p>
-                  <Link href="/">
+                  <Link href={`/${slug}/`}>
                     <Button className="bg-main-purple hover:bg-sub-background text-white hover:text-black">
                       <Calendar className="h-4 w-4 mr-2" />
                       Fazer Novo Agendamento

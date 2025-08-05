@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase, type Appointment } from "@/lib/supabase";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
 export function RecentAppointments() {
   const [recentPhone, setRecentPhone] = useState("");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
+  const { slug } = useParams();
 
   useEffect(() => {
     const phone = sessionStorage.getItem("lastAppointmentPhone");
