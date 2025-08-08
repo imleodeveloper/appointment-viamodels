@@ -63,15 +63,20 @@ export default function HomePage() {
 
   const fetchServices = async () => {
     try {
-      const { data, error } = await supabase
-        .from("services")
-        .select("*")
-        .eq("slug_link", slug)
-        .eq("active", true)
-        .order("name");
+      const response = await fetch("/api/home/fetch-services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
 
-      if (error) throw error;
-      setServices(data || []);
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.log("Não foi possível fazer a busca de serviços.");
+        return;
+      }
+      setServices(data.services || []);
+      console.log("DATA: ", data);
     } catch (error) {
       console.error("Erro ao carregar serviços:", error);
     } finally {
@@ -186,7 +191,7 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <Link href={`/agendar/${service.id}`}>
+                  <Link href={`/${slug}/agendar/${service.id}`}>
                     <Button className="bg-main-purple hover:bg-sub-background text-white hover:text-black">
                       Reservar
                       <ArrowRight className="h-4 w-4 ml-2" />

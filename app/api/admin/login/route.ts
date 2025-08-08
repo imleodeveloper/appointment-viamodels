@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import bcrypt from "bcryptjs";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, password } = body;
+    const { email, password, slug } = body;
 
     if (!email || !password) {
       return NextResponse.json(
@@ -14,33 +15,49 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data: user, error: errorUser } =
-      await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
-      });
+    const { data: confirmSlug, error: errorSlug } = await supabaseAdmin
+      .from("profiles")
+      .select("*")
+      .eq("email", email)
+      .eq("slug_link", slug)
+      .single();
 
-    //console.log("User: ", user);
+    if (confirmSlug) {
+      const { data: user, error: errorUser } =
+        await supabase.auth.signInWithPassword({
+          email: email,
+          password: password,
+        });
 
-    if (errorUser) {
-      console.error("Erro no login: ", errorUser.message);
-      return NextResponse.json({ error: errorUser.message }, { status: 401 });
+      //console.log("User: ", user);
+
+      if (errorUser) {
+        console.error("Erro no login: ", errorUser.message);
+        return NextResponse.json({ error: errorUser.message }, { status: 401 });
+      }
+
+      return NextResponse.json(
+        {
+          user: {
+            id: user.user.id,
+            email: user.user.email,
+          },
+          session: {
+            access_token: user.session.access_token,
+            refresh_token: user.session.refresh_token,
+            expires_at: user.session.expires_at,
+          },
+        },
+        { status: 200 }
+      );
+    } else if (errorSlug || !confirmSlug) {
+      return NextResponse.json(
+        {
+          message: "Usuário administrador inválido para utilizar neste URL.",
+        },
+        { status: 404 }
+      );
     }
-
-    return NextResponse.json(
-      {
-        user: {
-          id: user.user.id,
-          email: user.user.email,
-        },
-        session: {
-          access_token: user.session.access_token,
-          refresh_token: user.session.refresh_token,
-          expires_at: user.session.expires_at,
-        },
-      },
-      { status: 200 }
-    );
     /* const { data: admin, error } = await supabase
       .from("admins")
       .select(

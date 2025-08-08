@@ -122,12 +122,20 @@ export default function MyAppointmentsPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from("appointments")
-        .update({ status: "cancelled" })
-        .eq("id", appointmentId);
+      const response = await fetch("/api/appointments/user-cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId }),
+      });
 
-      if (error) throw error;
+      const data = await response.json();
+      console.log(data);
+
+      if (!response.ok) {
+        console.log("Não foi possível receber resposta do servidor.");
+        alert("Erro interno no servidor, tente novamente.");
+        return;
+      }
 
       // Update local state
       setAppointments((prev) =>
@@ -136,7 +144,7 @@ export default function MyAppointmentsPage() {
         )
       );
 
-      alert("Agendamento cancelado com sucesso!");
+      alert(data.message);
     } catch (error) {
       console.error("Erro ao cancelar agendamento:", error);
       alert("Erro ao cancelar agendamento. Tente novamente.");

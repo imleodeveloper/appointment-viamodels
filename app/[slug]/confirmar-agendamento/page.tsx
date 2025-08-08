@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Calendar, Clock, User, MapPin, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,7 @@ interface AppointmentData {
 }
 
 export default function ConfirmAppointmentPage() {
+  const slug = useParams();
   const router = useRouter();
   const phoneInput = usePhoneMask();
   const [appointmentData, setAppointmentData] =
@@ -54,57 +55,36 @@ export default function ConfirmAppointmentPage() {
 
     setLoading(true);
 
+    const clientNameTrim = clientName.trim();
+    const phoneClient = phoneInput.getUnmaskedValue();
+
     try {
-      // Double-check availability before creating appointment
-      const { data: existingAppointment, error: checkError } = await supabase
-        .from("appointments")
-        .select("id")
-        .eq("professional_id", appointmentData.professionalId)
-        .eq("appointment_date", appointmentData.date)
-        .eq("appointment_time", appointmentData.time)
-        .eq("status", "scheduled")
-        .single();
+      const response = await fetch("/api/appointments/new-appointment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          appointmentData,
+          clientNameTrim,
+          phoneClient,
+        }),
+      });
 
-      if (checkError && checkError.code !== "PGRST116") {
-        throw checkError;
-      }
-
-      if (existingAppointment) {
-        alert(
-          "Este horário acabou de ser ocupado por outro cliente. Por favor, escolha outro horário."
-        );
-        router.back();
-        return;
-      }
-
-      // Create the appointment
-      const { data: newAppointment, error } = await supabase
-        .from("appointments")
-        .insert({
-          service_id: appointmentData.serviceId,
-          professional_id: appointmentData.professionalId,
-          client_name: clientName.trim(),
-          client_phone: phoneInput.getUnmaskedValue(),
-          appointment_date: appointmentData.date,
-          appointment_time: appointmentData.time,
-          status: "scheduled",
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await response.json();
+      console.log("Data: ", data);
 
       // Store phone and appointment ID for redirect
-      sessionStorage.setItem("searchPhone", phoneInput.getUnmaskedValue());
-      sessionStorage.setItem("newAppointmentId", newAppointment.id);
+      sessionStorage.setItem(
+        "searchPhone",
+        data.phoneClient || phoneInput.getUnmaskedValue()
+      );
+      sessionStorage.setItem("newAppointmentId", data.newAppointmentId);
 
       // Clear appointment data
       sessionStorage.removeItem("appointmentData");
 
       // Redirect to my appointments with phone parameter
-      router.push(
-        `/meus-agendamentos?phone=${phoneInput.getUnmaskedValue()}&new=true`
-      );
+      router.push(data.routerPush);
     } catch (error) {
       console.error("Erro ao criar agendamento:", error);
       alert("Erro ao criar agendamento. Tente novamente.");

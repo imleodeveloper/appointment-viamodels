@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Header } from "@/components/header";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
 export default function AppointmentConfirmedPage() {
+  const slug = useParams();
   const [clientPhone, setClientPhone] = useState("");
 
   useEffect(() => {
     // Get phone from sessionStorage if available
-    const phone = sessionStorage.getItem("lastAppointmentPhone");
+    const phone = sessionStorage.getItem("searchPhone");
     if (phone) {
       setClientPhone(phone);
     }
@@ -44,8 +46,10 @@ export default function AppointmentConfirmedPage() {
               confirmação em breve.
             </p>
 
-            <div className="space-y-4">
-              <Link href="/meus-agendamentos">
+            <div className="flex flex-col lg:flex-row justify-center items-center gap-4">
+              <Link
+                href={`/${slug.slug}/meus-agendamentos?phone=${clientPhone}&new=true`}
+              >
                 <Button
                   className="w-full bg-main-purple hover:bg-sub-background text-white hover:text-black"
                   onClick={handleViewAppointments}
@@ -55,7 +59,7 @@ export default function AppointmentConfirmedPage() {
                 </Button>
               </Link>
 
-              <Link href="/">
+              <Link href={`/${slug.slug}`}>
                 <Button
                   variant="outline"
                   className="w-full bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"

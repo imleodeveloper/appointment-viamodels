@@ -41,9 +41,9 @@ CREATE TABLE IF NOT EXISTS appointments (
 CREATE TABLE IF NOT EXISTS admins (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
+  slug_link TEXT NOT NULL REFERENCES profiles(slug_link),
   name VARCHAR(255) NOT NULL,
-  role VARCHAR(50) DEFAULT 'admin',
+  role VARCHAR(50) DEFAULT 'super_admin',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

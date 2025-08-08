@@ -12,6 +12,7 @@ export default function SelectProfessionalPage() {
   const params = useParams();
   const router = useRouter();
   const serviceId = params.serviceId as string;
+  const slug = params.slug as string;
 
   const [service, setService] = useState<Service | null>(null);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
@@ -26,25 +27,39 @@ export default function SelectProfessionalPage() {
   const fetchData = async () => {
     try {
       // Fetch service
-      const { data: serviceData, error: serviceError } = await supabase
+      const responseService = await fetch("/api/home/agendar/fetch-service", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serviceId, slug }),
+      });
+
+      /*const { data: serviceData, error: serviceError } = await supabase
         .from("services")
         .select("*")
         .eq("id", serviceId)
-        .single();
-
-      if (serviceError) throw serviceError;
+        .single();*/
+      const serviceData = await responseService.json();
+      //console.log(serviceData);
+      if (!responseService.ok) {
+        console.log("Erro ao buscar serviço.");
+      }
       setService(serviceData);
 
       // Fetch professionals
-      const { data: professionalsData, error: professionalsError } =
-        await supabase
-          .from("professionals")
-          .select("*")
-          .eq("active", true)
-          .order("name");
-
-      if (professionalsError) throw professionalsError;
-      setProfessionals(professionalsData || []);
+      const responseProfessional = await fetch(
+        "/api/home/agendar/fetch-professional",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ serviceId, slug }),
+        }
+      );
+      const dataProfessional = await responseProfessional.json();
+      //console.log("DataProfessional: ", dataProfessional);
+      if (!responseProfessional.ok) {
+        console.log("Profissional não encontrado.");
+      }
+      setProfessionals(dataProfessional.professionalsData || []);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
     } finally {
@@ -53,7 +68,7 @@ export default function SelectProfessionalPage() {
   };
 
   const handleSelectProfessional = (professionalId: string) => {
-    router.push(`/agendar/${serviceId}/${professionalId}`);
+    router.push(`/${slug}/agendar/${serviceId}/${professionalId}`);
   };
 
   if (loading) {

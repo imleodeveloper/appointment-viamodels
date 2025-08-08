@@ -5,14 +5,25 @@ import bcrypt from "bcryptjs";
 // GET - Listar todos os admins (apenas super admin)
 export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const slug = searchParams.get("slug");
+
+    if (!slug) {
+      return NextResponse.json(
+        { error: "Slug não fornecido" },
+        { status: 400 }
+      );
+    }
+
     const { data: admins, error } = await supabase
       .from("admins")
       .select(
         `
         *,
-        professional:professionals(name)
-      `
+        professional:professionals(name, slug_link)
+        `
       )
+      .eq("professional.slug_link", slug)
       .order("created_at", { ascending: false });
 
     if (error) throw error;

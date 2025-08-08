@@ -11,6 +11,7 @@ import { supabase, type Service, type Professional } from "@/lib/supabase";
 export default function SelectDateTimePage() {
   const params = useParams();
   const router = useRouter();
+  const slug = params.slug as string;
   const serviceId = params.serviceId as string;
   const professionalId = params.professionalId as string;
 
@@ -115,7 +116,7 @@ export default function SelectDateTimePage() {
     const dates = [];
     const today = new Date();
 
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 21; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       dates.push(date);
@@ -175,47 +176,37 @@ export default function SelectDateTimePage() {
   const handleTimeSelect = async (time: string) => {
     if (!isTimeAvailable(time)) return;
 
-    // Double-check availability before proceeding
+    // Duas verificação de disponibilidade antes de continuar
     try {
-      const { data: existingAppointment, error } = await supabase
-        .from("appointments")
-        .select("id")
-        .eq("professional_id", professionalId)
-        .eq("appointment_date", selectedDate)
-        .eq("appointment_time", time)
-        .eq("status", "scheduled")
-        .single();
+      const response = await fetch("/api/appointments/confirm-appointment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          serviceId,
+          professionalId,
+          selectedDate,
+          time,
+        }),
+      });
 
-      if (error && error.code !== "PGRST116") {
-        throw error;
-      }
+      const data = await response.json();
 
-      if (existingAppointment) {
+      if (data.busy) {
         alert(
-          "Este horário acabou de ser ocupado por outro cliente. Por favor, escolha outro horário."
+          "Este horário está ocupado por outro cliente. Por favor, escolha outro horário."
         );
         // Refresh available times
         fetchAvailableTimes();
         return;
       }
 
-      const appointmentData = {
-        serviceId,
-        professionalId,
-        date: selectedDate,
-        time,
-        serviceName: service?.name || "",
-        professionalName: professional?.name || "",
-        duration: service?.duration_minutes || 0,
-        price: service?.price || 0,
-      };
-
       // Store in sessionStorage for the confirmation page
       sessionStorage.setItem(
         "appointmentData",
-        JSON.stringify(appointmentData)
+        JSON.stringify(data.appointmentData)
       );
-      router.push("/confirmar-agendamento");
+      router.push(`/${slug}/confirmar-agendamento`);
     } catch (error) {
       console.error("Erro ao verificar disponibilidade:", error);
       alert("Erro ao verificar disponibilidade. Tente novamente.");
@@ -294,7 +285,7 @@ export default function SelectDateTimePage() {
                     variant={isSelected ? "default" : "outline"}
                     className={`min-w-[80px] flex-shrink-0 hover:bg-sub-background ${
                       isSelected
-                        ? "bg-main-pink text-white"
+                        ? "bg-main-pink text-white hover:bg-main-pink"
                         : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
                     } ${isToday ? "ring-2 ring-pink-300" : ""}`}
                     onClick={() => setSelectedDate(dateStr)}
@@ -334,7 +325,7 @@ export default function SelectDateTimePage() {
                     disabled={disabled}
                     className={`${
                       available && !booked && !past
-                        ? "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-pink-900 border-gray-300 dark:border-gray-600"
+                        ? "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-pink-50 dark:hover:bg-pink-900 border-gray-300 dark:border-gray-600"
                         : "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-600"
                     }`}
                     onClick={() => handleTimeSelect(time)}

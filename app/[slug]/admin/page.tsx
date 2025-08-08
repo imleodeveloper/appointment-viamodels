@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   LogIn,
   Calendar,
@@ -24,6 +24,9 @@ import {
   X,
   ChevronLeft,
   Filter,
+  PanelTopOpen,
+  PanelLeftOpen,
+  PanelLeftClose,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,6 +71,7 @@ interface Admin {
   id: string;
   email: string;
   name: string;
+  slug_link: string;
   role: "admin" | "super_admin";
   professional_id?: string;
   professional?: {
@@ -83,6 +87,7 @@ interface UserProfile {
 }
 
 interface Professional {
+  slug_link: string;
   id: string;
   name: string;
   email: string;
@@ -132,6 +137,7 @@ interface ServiceDetail {
 }
 
 export default function AdminPage() {
+  const { slug } = useParams();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -208,7 +214,7 @@ export default function AdminPage() {
       ? [
           { id: "appointments", label: "Agendamentos", icon: Calendar },
           { id: "reports", label: "Relatórios", icon: BarChart3 },
-          { id: "admins", label: "Administradores", icon: Shield },
+          //{ id: "admins", label: "Administradores", icon: Shield },
           { id: "professionals", label: "Profissionais", icon: Users },
           { id: "services", label: "Serviços", icon: Settings },
         ]
@@ -218,24 +224,32 @@ export default function AdminPage() {
           { id: "services", label: "Serviços", icon: Settings },
         ];
 
-  /*useEffect(() => {
+  useEffect(() => {
     // Verifica se já está autenticado
-    const authStatus = sessionStorage.getItem("adminAuth");
-    if (authStatus) {
-      const adminData = JSON.parse(authStatus);
-      setCurrentAdmin(adminData);
-      setIsAuthenticated(true);
-      fetchAppointments(adminData);
-      if (adminData.role === "super_admin") {
-        fetchAdmins();
+    const fetchAdmin = async () => {
+      const response = await fetch("/api/admin/check-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+
+      const data = await response.json();
+      if (data.user_admin) {
+        setCurrentAdmin(data.user_admin);
+        setIsAuthenticated(true);
+        fetchAppointments(data.user_admin);
+        if (data.user_admin.role === "super_admin") {
+          fetchAdmins();
+        }
+        fetchProfessionals();
+        fetchServices(data.user_admin);
+        fetchAllServices();
+        fetchAvailableMonths(data.user_admin);
+        fetchMonthlyReport(data.user_admin, selectedMonth);
       }
-      fetchProfessionals();
-      fetchServices(adminData);
-      fetchAllServices();
-      fetchAvailableMonths(adminData);
-      fetchMonthlyReport(adminData, selectedMonth);
-    }
-  }, []);*/
+    };
+    fetchAdmin();
+  }, []);
 
   useEffect(() => {
     if (currentAdmin) {
@@ -448,7 +462,7 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, slug }),
       });
 
       const data = await res.json();
@@ -515,11 +529,25 @@ export default function AdminPage() {
 
   const fetchAdmins = async () => {
     try {
-      const res = await fetch("/api/admin/manage-admins");
-      const data = await res.json();
-      if (res.ok) {
-        setAdmins(data.admins || []);
+      if (!slug) {
+        console.error("Slug não definido");
+        return;
       }
+
+      //const res = await fetch(
+      //  `/api/admin/manage-admins?slug=${encodeURIComponent(slug)}`,
+      //  {
+      //    method: "GET",
+      //    headers: { "Content-Type": "application/json" },
+      //  }
+      //);
+
+      //const data = await res.json();
+      //if (res.ok) {
+      //  setAdmins(data.admins || []);
+      //} else {
+      //  console.error("Erro na resposta:", data.error);
+      //}
     } catch (error) {
       console.error("Erro ao carregar admins:", error);
     }
@@ -527,9 +555,24 @@ export default function AdminPage() {
 
   const fetchProfessionals = async () => {
     try {
-      const res = await fetch("/api/professionals");
-      const data = await res.json();
-      if (res.ok) {
+      //const res = await fetch("/api/professionals");
+      //const data = await res.json();
+      //if (res.ok) {
+      //  setProfessionals(data.professionals || []);
+      //}
+
+      const response = await fetch(
+        "/api/admin/professionals/fetch-professionals",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug }),
+        }
+      );
+
+      const data = await response.json();
+      console.log(data.professionals);
+      if (response.ok || data.professionals) {
         setProfessionals(data.professionals || []);
       }
     } catch (error) {
@@ -538,15 +581,25 @@ export default function AdminPage() {
   };
 
   const fetchServices = async (admin: Admin) => {
+    //onsole.log("Admin: ", admin);
     try {
+      const slugAdmin = admin.slug_link;
+      /*
       let url = "/api/services";
-      if (admin.role === "admin" && admin.professional_id) {
-        url += `?professional_id=${admin.professional_id}`;
-      }
+      if (admin.role === "super_admin" && admin.slug_link) {
+        url += `?professional_id=${admin.slug_link}`;
+      }*/
+      //const res = await fetch(url);
 
-      const res = await fetch(url);
-      const data = await res.json();
-      if (res.ok) {
+      const response = await fetch("/api/admin/services/fetch-services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slugAdmin }),
+      });
+
+      const data = await response.json();
+      console.log("DATA: ", data.services);
+      if (response.ok || data.services) {
         setServices(data.services || []);
       }
     } catch (error) {
@@ -556,9 +609,13 @@ export default function AdminPage() {
 
   const fetchAllServices = async () => {
     try {
-      const res = await fetch("/api/services");
-      const data = await res.json();
-      if (res.ok) {
+      const response = await fetch("/api/admin/services/fetch-all-services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+      const data = await response.json();
+      if (response.ok) {
         setAllServices(data.services || []);
       }
     } catch (error) {
@@ -660,6 +717,7 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          slug_link: slug,
           name: professionalForm.name,
           email: professionalForm.email || null,
           phone: professionalForm.phone || null,
@@ -699,6 +757,7 @@ export default function AdminPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          slug_link: slug,
           id: editingProfessional.id,
           name: professionalForm.name,
           email: professionalForm.email || null,
@@ -734,18 +793,19 @@ export default function AdminPage() {
     if (!confirm("Tem certeza que deseja excluir este profissional?")) return;
 
     try {
-      const res = await fetch(`/api/professionals?id=${professionalId}`, {
+      const response = await fetch(`/api/professionals?id=${professionalId}`, {
         method: "DELETE",
       });
 
-      if (!res.ok) {
-        const data = await res.json();
+      if (!response.ok) {
+        const data = await response.json();
         alert(data.error || "Erro ao excluir profissional");
         return;
       }
-
-      alert("Profissional excluído com sucesso!");
-      fetchProfessionals();
+      if (response.ok) {
+        alert("Profissional excluído com sucesso!");
+        fetchProfessionals();
+      }
     } catch (error) {
       console.error("Erro ao excluir profissional:", error);
       alert("Erro ao excluir profissional.");
@@ -761,6 +821,7 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          slug_link: slug,
           name: serviceForm.name,
           duration_minutes: serviceForm.duration_minutes,
           price: serviceForm.price || null,
@@ -798,6 +859,7 @@ export default function AdminPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          slug_link: slug,
           id: editingService.id,
           name: serviceForm.name,
           duration_minutes: serviceForm.duration_minutes,
@@ -1065,7 +1127,7 @@ export default function AdminPage() {
 
     if (selectedServiceDetail) {
       return (
-        <div className="space-y-6">
+        <div className="space-y-6 w-full">
           <div className="flex items-center space-x-4">
             <Button
               variant="outline"
@@ -1150,7 +1212,7 @@ export default function AdminPage() {
         onValueChange={setActiveReportTab}
         className="space-y-6"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center gap-4 justify-center md:gap-0 md:justify-between">
           <TabsList>
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="services">Serviços Detalhados</TabsTrigger>
@@ -1558,7 +1620,7 @@ export default function AdminPage() {
                 onOpenChange={setIsCreateAdminOpen}
               >
                 <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button className="bg-main-purple hover:bg-main-pink text-white">
                     <UserPlus className="h-4 w-4 mr-2" />
                     Novo Admin
                   </Button>
@@ -1747,7 +1809,7 @@ export default function AdminPage() {
                 onOpenChange={setIsCreateProfessionalOpen}
               >
                 <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button className="bg-main-purple hover:bg-main-pink text-white">
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Profissional
                   </Button>
@@ -1820,7 +1882,7 @@ export default function AdminPage() {
                               specialties: e.target.value,
                             }))
                           }
-                          placeholder="Cortes, Coloração, etc. (separar por vírgula)"
+                          placeholder="Presenciais, etc. (separar por vírgula)"
                         />
                       </div>
                     </div>
@@ -1877,7 +1939,11 @@ export default function AdminPage() {
                       >
                         Cancelar
                       </Button>
-                      <Button type="submit" disabled={loading}>
+                      <Button
+                        type="submit"
+                        className="bg-main-purple hover:bg-sub-background hover:text-black"
+                        disabled={loading}
+                      >
                         {loading ? "Criando..." : "Criar Profissional"}
                       </Button>
                     </div>
@@ -1943,7 +2009,7 @@ export default function AdminPage() {
                                   <Badge
                                     key={index}
                                     variant="secondary"
-                                    className="text-xs"
+                                    className="text-xs text-white"
                                   >
                                     {specialty}
                                   </Badge>
@@ -2121,7 +2187,11 @@ export default function AdminPage() {
                     >
                       Cancelar
                     </Button>
-                    <Button type="submit" disabled={loading}>
+                    <Button
+                      type="submit"
+                      className="bg-main-purple hover:bg-sub-background hover:text-black"
+                      disabled={loading}
+                    >
                       {loading ? "Salvando..." : "Salvar Alterações"}
                     </Button>
                   </div>
@@ -2149,7 +2219,7 @@ export default function AdminPage() {
                   onOpenChange={setIsCreateServiceOpen}
                 >
                   <DialogTrigger asChild>
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <Button className="bg-main-purple hover:bg-main-pink text-white">
                       <Plus className="h-4 w-4 mr-2" />
                       Novo Serviço
                     </Button>
@@ -2226,10 +2296,9 @@ export default function AdminPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="beauty">Beleza</SelectItem>
-                              <SelectItem value="hair">Cabelo</SelectItem>
-                              <SelectItem value="skin">Pele</SelectItem>
-                              <SelectItem value="nails">Unhas</SelectItem>
+                              <SelectItem value="beauty">Presencial</SelectItem>
+                              <SelectItem value="hair">Ligação</SelectItem>
+                              <SelectItem value="skin">Mensagem</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -2288,7 +2357,11 @@ export default function AdminPage() {
                         >
                           Cancelar
                         </Button>
-                        <Button type="submit" disabled={loading}>
+                        <Button
+                          type="submit"
+                          className="bg-main-purple hover:bg-sub-background hover:text-black"
+                          disabled={loading}
+                        >
                           {loading ? "Criando..." : "Criar Serviço"}
                         </Button>
                       </div>
@@ -2339,7 +2412,6 @@ export default function AdminPage() {
                         </td>
                         <td className="py-3 px-4 text-gray-700 dark:text-gray-300">
                           <div className="flex items-center">
-                            <DollarSign className="h-4 w-4 mr-1" />
                             {service.price
                               ? `R$ ${service.price.toFixed(2)}`
                               : "-"}
@@ -2467,10 +2539,9 @@ export default function AdminPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="beauty">Beleza</SelectItem>
-                          <SelectItem value="hair">Cabelo</SelectItem>
-                          <SelectItem value="skin">Pele</SelectItem>
-                          <SelectItem value="nails">Unhas</SelectItem>
+                          <SelectItem value="in-person">Presencial</SelectItem>
+                          <SelectItem value="msg">Mensagem</SelectItem>
+                          <SelectItem value="call">Ligação</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -2532,7 +2603,11 @@ export default function AdminPage() {
                     >
                       Cancelar
                     </Button>
-                    <Button type="submit" disabled={loading}>
+                    <Button
+                      type="submit"
+                      className="bg-main-purple hover:bg-sub-background hover:text-black"
+                      disabled={loading}
+                    >
                       {loading ? "Salvando..." : "Salvar Alterações"}
                     </Button>
                   </div>
@@ -2548,12 +2623,12 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+    <div className="min-h-screen w-full flex">
       {/* Sidebar */}
       <div
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg transform ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}
+        } transition-transform duration-300 ease-in-out`}
       >
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -2563,9 +2638,8 @@ export default function AdminPage() {
             variant="ghost"
             size="sm"
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden"
           >
-            <X className="h-4 w-4" />
+            <PanelLeftClose className="h-4 w-4" />
           </Button>
         </div>
 
@@ -2614,9 +2688,8 @@ export default function AdminPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden"
                 >
-                  <Menu className="h-4 w-4" />
+                  <PanelLeftOpen className="h-4 w-4" />
                 </Button>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                   {menuItems.find((item) => item.id === activeTab)?.label ||

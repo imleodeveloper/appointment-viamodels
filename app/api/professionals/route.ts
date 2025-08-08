@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 // GET - Listar todos os profissionais
 export async function GET() {
@@ -29,7 +30,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, email, phone, specialties, serviceIds } = body;
+    const { slug_link, name, email, phone, specialties, serviceIds } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -39,9 +40,10 @@ export async function POST(req: Request) {
     }
 
     // Criar profissional
-    const { data: professional, error: profError } = await supabase
+    const { data: professional, error: profError } = await supabaseAdmin
       .from("professionals")
       .insert({
+        slug_link,
         name,
         email: email || null,
         phone: phone || null,
@@ -64,11 +66,12 @@ export async function POST(req: Request) {
     // Associar serviços se fornecidos
     if (serviceIds && serviceIds.length > 0) {
       const serviceRelations = serviceIds.map((serviceId: string) => ({
+        slug_link,
         professional_id: professional.id,
         service_id: serviceId,
       }));
 
-      const { error: serviceError } = await supabase
+      const { error: serviceError } = await supabaseAdmin
         .from("professional_services")
         .insert(serviceRelations);
 
@@ -88,7 +91,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const { id, name, email, phone, specialties, serviceIds } = body;
+    const { slug_link, id, name, email, phone, specialties, serviceIds } = body;
 
     if (!id || !name) {
       return NextResponse.json(
@@ -98,7 +101,7 @@ export async function PUT(req: Request) {
     }
 
     // Atualizar profissional
-    const { data: professional, error: profError } = await supabase
+    const { data: professional, error: profError } = await supabaseAdmin
       .from("professionals")
       .update({
         name,
@@ -115,7 +118,7 @@ export async function PUT(req: Request) {
     // Atualizar associações de serviços
     if (serviceIds !== undefined) {
       // Remover associações existentes
-      await supabase
+      await supabaseAdmin
         .from("professional_services")
         .delete()
         .eq("professional_id", id);
@@ -123,11 +126,12 @@ export async function PUT(req: Request) {
       // Adicionar novas associações
       if (serviceIds.length > 0) {
         const serviceRelations = serviceIds.map((serviceId: string) => ({
+          slug_link,
           professional_id: id,
           service_id: serviceId,
         }));
 
-        const { error: serviceError } = await supabase
+        const { error: serviceError } = await supabaseAdmin
           .from("professional_services")
           .insert(serviceRelations);
 
@@ -158,7 +162,7 @@ export async function DELETE(req: Request) {
     }
 
     // Verificar se há agendamentos associados
-    const { data: appointments } = await supabase
+    const { data: appointments } = await supabaseAdmin
       .from("appointments")
       .select("id")
       .eq("professional_id", professionalId)
@@ -171,7 +175,7 @@ export async function DELETE(req: Request) {
       );
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("professionals")
       .delete()
       .eq("id", professionalId);

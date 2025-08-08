@@ -1,10 +1,11 @@
 -- Criar tabela de relacionamento entre profissionais e serviços
 CREATE TABLE IF NOT EXISTS professional_services (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  slug_link TEXT NOT NULL REFERENCES profiles(slug_link) ON DELETE CASCADE,
   professional_id UUID REFERENCES professionals(id) ON DELETE CASCADE,
   service_id UUID REFERENCES services(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(professional_id, service_id)
+  UNIQUE(slug_link, professional_id, service_id)
 );
 
 -- Adicionar alguns relacionamentos de exemplo
