@@ -501,27 +501,18 @@ export default function AdminPage() {
 
   const fetchAppointments = async (admin: Admin) => {
     try {
-      let query = supabase
-        .from("appointments")
-        .select(
-          `
-          *,
-          service:services(*),
-          professional:professionals(*)
-        `
-        )
-        .order("appointment_date", { ascending: true })
-        .order("appointment_time", { ascending: true });
+      const response = await fetch("/api/admin/appointments/fetch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
 
-      // Se for admin normal, filtrar apenas agendamentos do seu profissional
-      if (admin.role === "admin" && admin.professional_id) {
-        query = query.eq("professional_id", admin.professional_id);
+      const dataResponse = await response.json();
+
+      if (!response.ok) {
+        alert("Erro no servidor, recarregue a página");
       }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setAppointments(data || []);
+      setAppointments(dataResponse.data || []);
     } catch (error) {
       console.error("Erro ao carregar agendamentos:", error);
     }
