@@ -1277,7 +1277,7 @@ export default function AdminPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="bg-white dark:bg-gray-800">
+            <Card className="bg-white dark:bg-gray-800 flex justify-center items-center flex-col">
               <CardHeader>
                 <CardTitle className="text-gray-900 dark:text-white">
                   Serviços Mais Utilizados
@@ -2679,8 +2679,10 @@ export default function AdminPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSidebarOpen(true)}
+                  className="group bg-main-purple hover:bg-main-pink"
                 >
-                  <PanelLeftOpen className="h-4 w-4" />
+                  <span className="text-gray-200">Menu</span>
+                  <PanelLeftOpen className="h-4 w-4 text-gray-200" />
                 </Button>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                   {menuItems.find((item) => item.id === activeTab)?.label ||
