@@ -177,7 +177,7 @@ export default function AdminPage() {
 
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("appointments");
+  const [activeTab, setActiveTab] = useState("home");
 
   // Reports state
   const [activeReportTab, setActiveReportTab] = useState("overview");
@@ -1426,14 +1426,17 @@ export default function AdminPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="bg-white dark:bg-gray-800 flex justify-center items-center flex-col">
+            <Card className="bg-white dark:bg-gray-800">
               <CardHeader>
                 <CardTitle className="text-gray-900 dark:text-white">
                   Serviços Mais Utilizados
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[300px]">
+              <CardContent className="flex justify-center items-center">
+                <ChartContainer
+                  config={chartConfig}
+                  className="w-full h-[300px]"
+                >
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlyReport.servicosMaisUtilizados}>
                       <XAxis
@@ -1445,7 +1448,12 @@ export default function AdminPage() {
                       />
                       <YAxis />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="count" fill="var(--color-count)" />
+                      <Bar
+                        dataKey="count"
+                        fill="var(--color-count)"
+                        radius={[10, 10, 0, 0]}
+                        barSize={20}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </ChartContainer>
@@ -1458,8 +1466,11 @@ export default function AdminPage() {
                   Distribuição de Serviços
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[300px]">
+              <CardContent className="flex justify-center items-center">
+                <ChartContainer
+                  config={chartConfig}
+                  className="w-full h-[300px]"
+                >
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -1603,6 +1614,37 @@ export default function AdminPage() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case "home":
+        return (
+          <Card className="bg-white dark:bg-gray-800">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-gray-900 dark:text-white">
+                Home
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-16">
+                {menuItems.map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={index}
+                      className="rounded-xl shadow-xl flex flex-col justify-center items-center gap-8 p-4 transform hover:bg-gray-100 dark:hover:bg-gray-900 hover:-translate-y-2 transition-all duration-300 cursor-pointer"
+                      onClick={() => setActiveTab(item.id)}
+                    >
+                      <div className="w-24 h-24 rounded-full bg-sub-background flex justify-center items-center">
+                        <Icon className="w-7 h-7 text-black"></Icon>
+                      </div>
+                      <span className="text-xl text-black dark:text-white font-bold">
+                        {item.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        );
       case "appointments":
         return (
           <Card className="bg-white dark:bg-gray-800">
@@ -1616,6 +1658,7 @@ export default function AdminPage() {
                     </span>
                   )}
               </CardTitle>
+              <CardContent></CardContent>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -3020,13 +3063,15 @@ export default function AdminPage() {
                 </Button>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                   {menuItems.find((item) => item.id === activeTab)?.label ||
-                    "Painel Administrativo"}
+                    "Painel"}
                 </h1>
               </div>
               <div className="flex items-center space-x-4">
+                {/*
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {currentAdmin?.name}
+                  (currentAdmin?.name || "").split(" ")[0]
                 </span>
+                  */}
                 <Button
                   variant="outline"
                   size="sm"
