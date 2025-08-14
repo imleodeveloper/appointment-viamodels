@@ -1755,7 +1755,7 @@ export default function AdminPage() {
                   Selecione o dia:
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-x-2">
+              <CardContent className="grid grid-cols-3 md:grid-cols-7 gap-4">
                 {Object.keys(daysMap).map((dayKey) => {
                   const day = Number(dayKey);
                   return (
@@ -1767,7 +1767,7 @@ export default function AdminPage() {
                       onClick={() => setSelectedDay(Number(day))}
                       className={`min-w-[80px] bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-pink-50 dark:hover:bg-pink-900 border-gray-300 dark:border-gray-600 px-4 ${
                         selectedDay === Number(day)
-                          ? "bg-main-purple text-white hover:bg-main-pink"
+                          ? "bg-main-purple dark:bg-main-purple text-white hover:bg-main-pink"
                           : ""
                       }`}
                     >
@@ -1781,14 +1781,14 @@ export default function AdminPage() {
             </Card>
             {/* Horários Ativos */}
             <Card className="bg-white dark:bg-gray-800">
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col md:flex-row items-center justify-between">
                 <CardTitle className="flex justify-start items-center gap-2">
                   Selecione os horários:
                 </CardTitle>
-                <div className="space-x-4">
+                <div className="pt-4 md:pt-0 grid grid-cols-1 md:grid-cols-2 gap-2">
                   <Dialog>
                     <DialogTrigger>
-                      <Button className="bg-main-purple hover:bg-main-pink">
+                      <Button className="bg-main-purple hover:bg-main-pink dark:text-white">
                         <CalendarPlus className="h-4 w-4 mr-2" />
                         Adicionar Horário
                       </Button>
@@ -1915,7 +1915,7 @@ export default function AdminPage() {
                     className={`bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-pink-50 dark:hover:bg-pink-900 border-gray-300 dark:border-gray-600 px-12 ${
                       selectedDay !== null &&
                       datesAndTimes[selectedDay]?.includes(hour)
-                        ? "bg-main-purple text-white hover:text-black hover:bg-gray-200"
+                        ? "bg-main-purple dark:bg-main-purple text-white hover:text-black hover:bg-gray-200"
                         : ""
                     }`}
                     onClick={() => toggleHour(hour)}
