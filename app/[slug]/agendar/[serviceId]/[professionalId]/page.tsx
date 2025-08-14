@@ -8,6 +8,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Header } from "@/components/header";
 import { supabase, type Service, type Professional } from "@/lib/supabase";
 
+type WeekAvailability = {
+  [key: number]: string[];
+};
+
 export default function SelectDateTimePage() {
   const params = useParams();
   const router = useRouter();
@@ -21,6 +25,16 @@ export default function SelectDateTimePage() {
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filteredDates, setFilteredDates] = useState<Date[]>([]);
+  const [datesAndTimes, setDatesAndTimes] = useState<WeekAvailability>({
+    1: [],
+    2: [],
+    3: [],
+    4: [],
+    5: [],
+    6: [],
+    7: [],
+  });
 
   useEffect(() => {
     if (serviceId && professionalId) {
@@ -33,6 +47,18 @@ export default function SelectDateTimePage() {
       fetchAvailableTimes();
     }
   }, [selectedDate, professionalId]);
+
+  // Busca as datas e horários setados pelo admin
+  useEffect(() => {
+    fetchDatesAndTimes();
+  }, [slug]);
+
+  // Cálculo de dias do mês existentes pelo informado dos administradores.
+  useEffect(() => {
+    if (Object.values(datesAndTimes).some((times) => times.length > 0)) {
+      setFilteredDates(generateAvailableDatesForMonth(45));
+    }
+  }, [datesAndTimes]);
 
   const fetchData = async () => {
     try {
@@ -71,6 +97,7 @@ export default function SelectDateTimePage() {
         .select("appointment_time")
         .eq("professional_id", professionalId)
         .eq("appointment_date", selectedDate)
+        .eq("slug_link", slug)
         .eq("status", "scheduled");
 
       if (error) throw error;
@@ -96,7 +123,7 @@ export default function SelectDateTimePage() {
       const today = new Date();
       const isToday = selectedDate === formatDate(today);
 
-      if (isToday) {
+      /*if (isToday) {
         const currentTime = today.getHours() * 60 + today.getMinutes();
         const filteredTimes = available.filter((time) => {
           const [hours, minutes] = time.split(":").map(Number);
@@ -106,23 +133,67 @@ export default function SelectDateTimePage() {
         setAvailableTimes(filteredTimes);
       } else {
         setAvailableTimes(available);
-      }
+      } */
     } catch (error) {
       console.error("Erro ao carregar horários:", error);
     }
   };
 
+  const fetchDatesAndTimes = async () => {
+    try {
+      const response = await fetch("/api/appointments/date-and-time", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+
+      const data = await response.json();
+      const { dates_and_times } = data;
+      if (!response.ok) {
+        alert("Não foi possível encontrar datas e horários para agendamentos");
+        return;
+      }
+
+      setDatesAndTimes(dates_and_times);
+    } catch (error) {
+      console.error("Erro interno no servidor: ", error);
+      alert("Erro inesperado no servidor");
+      return;
+    }
+  };
+
   const generateDates = () => {
-    const dates = [];
+    const dates: Date[] = [];
     const today = new Date();
 
     for (let i = 0; i < 21; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
-      dates.push(date);
+      const weekday = date.getDay(); // 0 = domingo ... 6 = sábado
+      if (datesAndTimes[weekday]?.length > 0) {
+        dates.push(date);
+      }
     }
 
     return dates;
+  };
+
+  const generateAvailableDatesForMonth = (daysAhead = 30) => {
+    const today = new Date();
+    const result: Date[] = [];
+
+    for (let day = 0; day <= daysAhead; day++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + day);
+
+      const jsDay = date.getDay();
+      const convertedDay = jsDay === 0 ? 7 : jsDay;
+
+      if (datesAndTimes[convertedDay]?.length > 0) {
+        result.push(date);
+      }
+    }
+    return result;
   };
 
   const formatDate = (date: Date) => {
@@ -134,7 +205,8 @@ export default function SelectDateTimePage() {
 
   const getCurrentMonth = () => {
     if (!selectedDate) return "";
-    const date = new Date(selectedDate);
+    const [year, month, day] = selectedDate.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString("pt-BR", {
       month: "long",
       year: "numeric",
@@ -213,6 +285,23 @@ export default function SelectDateTimePage() {
     }
   };
 
+  const handleSelectDate = (date: Date) => {
+    const jsDay = date.getDay();
+    const convertedDay = jsDay === 0 ? 7 : jsDay;
+    setSelectedDate(formatDate(date));
+
+    // Pega só os horários configurados no banco de dados para esse dia
+    setAvailableTimes(sortedTimes(datesAndTimes[convertedDay] || []));
+  };
+
+  const sortedTimes = (times: string[]) => {
+    return times.sort((a, b) => {
+      const [ha, ma] = a.split(":").map(Number);
+      const [hb, mb] = b.split(":").map(Number);
+      return ha * 60 + ma - (hb * 60 + mb);
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -228,9 +317,6 @@ export default function SelectDateTimePage() {
       </div>
     );
   }
-
-  const dates = generateDates();
-  const allTimes = getAllTimes();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -274,7 +360,7 @@ export default function SelectDateTimePage() {
 
           <div className="overflow-x-auto">
             <div className="flex space-x-3 pb-4">
-              {dates.map((date) => {
+              {filteredDates.map((date) => {
                 const dateStr = formatDate(date);
                 const isSelected = selectedDate === dateStr;
                 const isToday = formatDate(new Date()) === dateStr;
@@ -288,7 +374,7 @@ export default function SelectDateTimePage() {
                         ? "bg-main-pink text-white hover:bg-main-pink"
                         : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
                     } ${isToday ? "ring-2 ring-pink-300" : ""}`}
-                    onClick={() => setSelectedDate(dateStr)}
+                    onClick={() => handleSelectDate(date)}
                   >
                     <div className="text-center">
                       <div className="text-xs opacity-75">
@@ -312,7 +398,7 @@ export default function SelectDateTimePage() {
             </h2>
 
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-              {allTimes.map((time) => {
+              {availableTimes.map((time) => {
                 const available = isTimeAvailable(time);
                 const booked = isTimeBooked(time);
                 const past = isTimePast(time);

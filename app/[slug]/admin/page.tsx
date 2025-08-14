@@ -27,6 +27,9 @@ import {
   PanelTopOpen,
   PanelLeftOpen,
   PanelLeftClose,
+  CalendarClock,
+  CalendarPlus,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +38,7 @@ import { Label } from "@/components/ui/label";
 import { supabase, type Appointment } from "@/lib/supabase";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -136,6 +140,10 @@ interface ServiceDetail {
   professionals: ServiceProfessionalData[];
 }
 
+type WeekAvailability = {
+  [key: number]: string[];
+};
+
 export default function AdminPage() {
   const { slug } = useParams();
   const { theme, toggleTheme } = useTheme();
@@ -153,6 +161,19 @@ export default function AdminPage() {
   const [monthlyReport, setMonthlyReport] = useState<MonthlyReport | null>(
     null
   );
+
+  //Fetch dates and times
+  const [datesAndTimes, setDatesAndTimes] = useState<WeekAvailability>({
+    1: [],
+    2: [],
+    3: [],
+    4: [],
+    5: [],
+    6: [],
+    7: [],
+  });
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [addTime, setAddTime] = useState({ hour: "", minute: "" });
 
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -178,6 +199,7 @@ export default function AdminPage() {
   const [isEditProfessionalOpen, setIsEditProfessionalOpen] = useState(false);
   const [isCreateServiceOpen, setIsCreateServiceOpen] = useState(false);
   const [isEditServiceOpen, setIsEditServiceOpen] = useState(false);
+  const [isDialogSaveOpen, setIsDialogSaveOpen] = useState(false);
 
   // Form states for creating admin
   const [newAdminEmail, setNewAdminEmail] = useState("");
@@ -213,6 +235,7 @@ export default function AdminPage() {
     currentAdmin?.role === "super_admin"
       ? [
           { id: "appointments", label: "Agendamentos", icon: Calendar },
+          { id: "dates", label: "Sua Agenda", icon: CalendarClock },
           { id: "reports", label: "Relatórios", icon: BarChart3 },
           //{ id: "admins", label: "Administradores", icon: Shield },
           { id: "professionals", label: "Profissionais", icon: Users },
@@ -242,6 +265,7 @@ export default function AdminPage() {
           fetchAdmins();
         }
         fetchProfessionals();
+        fetchDatesAndTimes();
         fetchServices(data.user_admin);
         fetchAllServices();
         fetchAvailableMonths(data.user_admin);
@@ -262,6 +286,7 @@ export default function AdminPage() {
       let query = supabase
         .from("appointments")
         .select("appointment_date")
+        .eq("slug_link", slug)
         .order("appointment_date", { ascending: false });
 
       // Se for admin normal, filtrar apenas agendamentos do seu profissional
@@ -311,6 +336,7 @@ export default function AdminPage() {
           professional:professionals(name)
         `
         )
+        .eq("slug_link", slug)
         .gte("appointment_date", firstDay.toISOString().split("T")[0])
         .lte("appointment_date", lastDay.toISOString().split("T")[0]);
 
@@ -396,6 +422,7 @@ export default function AdminPage() {
           professional:professionals(name)
         `
         )
+        .eq("slug_link", slug)
         .gte("appointment_date", firstDay.toISOString().split("T")[0])
         .lte("appointment_date", lastDay.toISOString().split("T")[0]);
 
@@ -518,6 +545,80 @@ export default function AdminPage() {
     }
   };
 
+  const daysMap: Record<number, string> = {
+    1: "Seg",
+    2: "Ter",
+    3: "Qua",
+    4: "Qui",
+    5: "Sex",
+    6: "Sáb",
+    7: "Dom",
+  };
+  const generateTimeSlots = () => {
+    const slots: string[] = [];
+    for (let h = 0; h < 24; h++) {
+      for (let m of ["00", "30"]) {
+        const hora = String(h).padStart(2, "0");
+        const minute = String(m).padStart(2, "0");
+        slots.push(`${hora}:${minute}`);
+      }
+    }
+    return slots;
+  };
+
+  const toggleHour = (hour: string) => {
+    if (!selectedDay) return;
+    setDatesAndTimes((prev) => {
+      const dayHours = prev[selectedDay] || [];
+      const exists = dayHours.includes(hour);
+      return {
+        ...prev,
+        [selectedDay]: exists
+          ? dayHours.filter((h) => h !== hour) /* Remove se já existe */
+          : [...dayHours, hour], // Adiciona se não existe
+      };
+    });
+  };
+
+  const fetchDatesAndTimes = async () => {
+    try {
+      const response = await fetch("/api/admin/dates-and-times", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+
+      const { dates_and_times } = await response.json();
+
+      if (!response.ok) {
+        alert(
+          "Ocorreu um erro ao tentar localizar datas e os horários, tente recarregar a página."
+        );
+      }
+
+      setDatesAndTimes(dates_and_times);
+    } catch (error) {
+      console.error(
+        "Erro ao tentar encontrar datas e horários no servidor de resposta: ",
+        error
+      );
+      alert(
+        "Erro ao tentar encontrar datas e horários no servidor, tente recarregar a página."
+      );
+      return;
+    }
+  };
+
+  const displayedHours =
+    selectedDay !== null
+      ? Array.from(
+          new Set([
+            ...generateTimeSlots(), // horários fixos
+            ...datesAndTimes[selectedDay], // horários customizados do dia selecionado
+          ])
+        )
+      : generateTimeSlots(); // se nenhum dia selecionado, só mostra os fixos
+
   const fetchAdmins = async () => {
     try {
       if (!slug) {
@@ -589,7 +690,6 @@ export default function AdminPage() {
       });
 
       const data = await response.json();
-      console.log("DATA: ", data.services);
       if (response.ok || data.services) {
         setServices(data.services || []);
       }
@@ -1022,6 +1122,55 @@ export default function AdminPage() {
       console.error("Erro ao atualizar status:", error);
       alert("Erro ao atualizar status. Tente novamente.");
     }
+  };
+
+  const updateDatesAndTimes = async (dates_and_times: WeekAvailability) => {
+    try {
+      const body = {
+        slug,
+        dates_and_times: dates_and_times,
+      };
+      const response = await fetch("/api/admin/dates-and-times/update-dates", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        alert("Não foi possível salvar alterações, tente novamente.");
+        return;
+      }
+
+      const data = await response.json();
+      alert(data.message);
+      setIsDialogSaveOpen(false);
+    } catch (error) {
+      console.log("Erro interno: ", error);
+      alert("Erro interno no servidor.");
+    }
+  };
+
+  const handleAddTime = () => {
+    if (selectedDay === null) return;
+
+    // Formata a hora para HH:MM
+    const formattedHour = `${String(addTime.hour).padStart(2, "0")}:${String(
+      addTime.minute
+    ).padStart(2, "0")}`;
+
+    setDatesAndTimes((prev) => {
+      const dayHours = prev[selectedDay] || [];
+      // Evita duplicações
+      if (!dayHours.includes(formattedHour)) {
+        return {
+          ...prev,
+          [selectedDay]: [...dayHours, formattedHour].sort(),
+        };
+      }
+      return prev;
+    });
+
+    setAddTime({ hour: "", minute: "" });
   };
 
   if (!isAuthenticated) {
@@ -1594,6 +1743,189 @@ export default function AdminPage() {
               )}
             </CardContent>
           </Card>
+        );
+
+      case "dates":
+        return (
+          <div className="w-full space-y-4">
+            {/* Datas Ativas */}
+            <Card className="bg-white dark:bg-gray-800">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex justify-start items-center gap-2">
+                  Selecione o dia:
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-x-2">
+                {Object.keys(daysMap).map((dayKey) => {
+                  const day = Number(dayKey);
+                  return (
+                    <Button
+                      key={day}
+                      variant={
+                        selectedDay === Number(day) ? "default" : "outline"
+                      }
+                      onClick={() => setSelectedDay(Number(day))}
+                      className={`min-w-[80px] bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-pink-50 dark:hover:bg-pink-900 border-gray-300 dark:border-gray-600 px-4 ${
+                        selectedDay === Number(day)
+                          ? "bg-main-purple text-white hover:bg-main-pink"
+                          : ""
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="font-semibold">{daysMap[day]}</div>
+                      </div>
+                    </Button>
+                  );
+                })}
+              </CardContent>
+            </Card>
+            {/* Horários Ativos */}
+            <Card className="bg-white dark:bg-gray-800">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex justify-start items-center gap-2">
+                  Selecione os horários:
+                </CardTitle>
+                <div className="space-x-4">
+                  <Dialog>
+                    <DialogTrigger>
+                      <Button className="bg-main-purple hover:bg-main-pink">
+                        <CalendarPlus className="h-4 w-4 mr-2" />
+                        Adicionar Horário
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Adicione um novo horário</DialogTitle>
+                      </DialogHeader>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault(); // evita o reload da página
+                          handleAddTime();
+                        }}
+                        className="space-y-4"
+                      >
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="changeHour">Horas *</Label>
+                            <Input
+                              id="changeHour"
+                              type="number"
+                              value={addTime.hour}
+                              onChange={(e) =>
+                                setAddTime((prev) => ({
+                                  ...prev,
+                                  hour: e.target.value,
+                                }))
+                              }
+                              placeholder="Ex: 06"
+                              required
+                              min={0}
+                              max={23}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="changeMinute">Minutos *</Label>
+                            <Input
+                              id="changeMinute"
+                              type="number"
+                              value={addTime.minute}
+                              onChange={(e) =>
+                                setAddTime((prev) => ({
+                                  ...prev,
+                                  minute: e.target.value,
+                                }))
+                              }
+                              required
+                              placeholder="Ex: 45"
+                              min={0}
+                              max={60}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end space-x-2">
+                          <DialogClose>
+                            <Button type="button" variant="outline">
+                              Cancelar
+                            </Button>
+                          </DialogClose>
+                          <Button
+                            type="submit"
+                            className="bg-main-purple hover:bg-sub-background hover:text-black"
+                            disabled={loading}
+                          >
+                            {loading ? "Adicionando..." : "Adicionar Horário"}
+                          </Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog
+                    open={isDialogSaveOpen}
+                    onOpenChange={setIsDialogSaveOpen}
+                  >
+                    <DialogTrigger>
+                      <Button className="bg-main-pink text-white hover:bg-main-purple">
+                        <Save className="h-4 w-4 mr-2" />
+                        Salvar Alterações
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>
+                          Você tem certeza que deseja salvar?
+                        </DialogTitle>
+                      </DialogHeader>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault(); // evita o reload da página
+                          updateDatesAndTimes(datesAndTimes);
+                        }}
+                        className="space-y-4"
+                      >
+                        <div className="flex justify-end space-x-2">
+                          <DialogClose>
+                            <Button type="button" variant="outline">
+                              Cancelar
+                            </Button>
+                          </DialogClose>
+                          <Button
+                            type="submit"
+                            className="bg-main-purple hover:bg-sub-background hover:text-black"
+                            disabled={loading}
+                          >
+                            {loading ? "Salvando..." : "Salvar Alterações"}
+                          </Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
+
+              <CardContent className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-8 gap-3">
+                {displayedHours.map((hour) => (
+                  <Button
+                    key={hour}
+                    variant={
+                      selectedDay !== null &&
+                      datesAndTimes[selectedDay]?.includes(hour)
+                        ? "default"
+                        : "outline"
+                    }
+                    className={`bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-pink-50 dark:hover:bg-pink-900 border-gray-300 dark:border-gray-600 px-12 ${
+                      selectedDay !== null &&
+                      datesAndTimes[selectedDay]?.includes(hour)
+                        ? "bg-main-purple text-white hover:text-black hover:bg-gray-200"
+                        : ""
+                    }`}
+                    onClick={() => toggleHour(hour)}
+                  >
+                    {hour}
+                  </Button>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
         );
 
       case "reports":
@@ -2287,9 +2619,11 @@ export default function AdminPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="beauty">Presencial</SelectItem>
-                              <SelectItem value="hair">Ligação</SelectItem>
-                              <SelectItem value="skin">Mensagem</SelectItem>
+                              <SelectItem value="in-person">
+                                Presencial
+                              </SelectItem>
+                              <SelectItem value="call">Ligação</SelectItem>
+                              <SelectItem value="msg">Mensagem</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -2688,17 +3022,6 @@ export default function AdminPage() {
                   {menuItems.find((item) => item.id === activeTab)?.label ||
                     "Painel Administrativo"}
                 </h1>
-                <Badge
-                  variant={
-                    currentAdmin?.role === "super_admin"
-                      ? "default"
-                      : "secondary"
-                  }
-                >
-                  {currentAdmin?.role === "super_admin"
-                    ? "Super Admin"
-                    : "Admin"}
-                </Badge>
               </div>
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-600 dark:text-gray-400">

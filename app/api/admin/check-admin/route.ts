@@ -4,15 +4,12 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function POST(request: NextRequest) {
   const { slug } = await request.json();
-  console.log("slug: ", slug);
   try {
     const { data, error } = await supabaseAdmin
       .from("admins")
       .select("*")
       .eq("slug_link", slug)
       .single();
-
-    console.log("Return Table Admins: ", data);
 
     if (error || !data) {
       return NextResponse.json(
