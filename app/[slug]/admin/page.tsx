@@ -30,6 +30,7 @@ import {
   CalendarClock,
   CalendarPlus,
   Save,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -240,6 +241,7 @@ export default function AdminPage() {
           //{ id: "admins", label: "Administradores", icon: Shield },
           { id: "professionals", label: "Profissionais", icon: Users },
           { id: "services", label: "Serviços", icon: Settings },
+          { id: "help", label: "Ajuda", icon: Info },
         ]
       : [
           { id: "appointments", label: "Agendamentos", icon: Calendar },
@@ -259,7 +261,6 @@ export default function AdminPage() {
       const data = await response.json();
       if (data.user_admin) {
         setCurrentAdmin(data.user_admin);
-        setIsAuthenticated(true);
         fetchAppointments(data.user_admin);
         if (data.user_admin.role === "super_admin") {
           fetchAdmins();
@@ -494,7 +495,7 @@ export default function AdminPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Erro ao autenticar");
+        alert(data.error || "Erro ao logar, usuário e senha incorretos.");
         return;
       }
 
@@ -2985,6 +2986,193 @@ export default function AdminPage() {
           </Card>
         );
 
+      case "help":
+        return (
+          <div className="max-w-4xl mx-auto p-6 space-y-12">
+            <h1 className="text-4xl font-bold text-main-purple text-center">
+              Central de Ajuda
+            </h1>
+
+            {/* AGENDAMENTOS */}
+            <section className="space-y-6">
+              <h2 className="text-3xl font-semibold text-main-pink">
+                Agendamentos
+              </h2>
+
+              <div className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4">
+                <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
+                  <span>Foto/Ícone</span>
+                </div>
+                <div className="w-full md:w-2/3">
+                  <h3 className="font-semibold text-lg">
+                    Como concluir agendamento
+                  </h3>
+                  <p>
+                    Após o cliente confirmar o horário, marque o agendamento
+                    como concluído. Isso atualiza o status para todos os
+                    envolvidos.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4">
+                <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
+                  <span>Foto/Ícone</span>
+                </div>
+                <div className="w-full md:w-2/3">
+                  <h3 className="font-semibold text-lg">
+                    Como cancelar agendamento
+                  </h3>
+                  <p>
+                    Clique no agendamento que deseja cancelar, confirme a ação e
+                    o cliente será notificado automaticamente.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* SUA AGENDA */}
+            <section className="space-y-6">
+              <h2 className="text-3xl font-semibold text-main-pink">
+                Sua Agenda
+              </h2>
+
+              <div className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4">
+                <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
+                  <span>Foto/Ícone</span>
+                </div>
+                <div className="w-full md:w-2/3">
+                  <h3 className="font-semibold text-lg">
+                    Selecione um dia da semana
+                  </h3>
+                  <p>
+                    Escolha o dia que deseja configurar seus horários
+                    disponíveis no app.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4">
+                <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
+                  <span>Foto/Ícone</span>
+                </div>
+                <div className="w-full md:w-2/3">
+                  <h3 className="font-semibold text-lg">
+                    Selecione os horários
+                  </h3>
+                  <p>
+                    Marque os intervalos disponíveis para atendimento neste dia.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4">
+                <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
+                  <span>Foto/Ícone</span>
+                </div>
+                <div className="w-full md:w-2/3">
+                  <h3 className="font-semibold text-lg">
+                    Como adicionar novo horário
+                  </h3>
+                  <p>
+                    Clique em "Adicionar Horário", escolha o período e confirme
+                    para adicioná-lo.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4">
+                <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
+                  <span>Foto/Ícone</span>
+                </div>
+                <div className="w-full md:w-2/3">
+                  <h3 className="font-semibold text-lg">Salvar alterações</h3>
+                  <p>
+                    Não esqueça de clicar em "Salvar" após configurar seus
+                    horários para garantir que as alterações sejam registradas.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* RELATÓRIOS */}
+            <section className="space-y-6">
+              <h2 className="text-3xl font-semibold text-main-pink">
+                Relatórios
+              </h2>
+              <div className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4">
+                <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
+                  <span>Foto/Ícone</span>
+                </div>
+                <div className="w-full md:w-2/3">
+                  <p>
+                    Analise a visão geral dos serviços, ranking por utilização,
+                    porcentagem de serviços, filtro por mês e profissionais.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* PROFISSIONAIS */}
+            <section className="space-y-6">
+              <h2 className="text-3xl font-semibold text-main-pink">
+                Profissionais
+              </h2>
+              {["Como editar", "Como excluir", "Como criar"].map(
+                (action, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4"
+                  >
+                    <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
+                      <span>Foto/Ícone</span>
+                    </div>
+                    <div className="w-full md:w-2/3">
+                      <h3 className="font-semibold text-lg">
+                        {action} um profissional
+                      </h3>
+                      <p>
+                        Clique na opção correspondente no painel de
+                        profissionais para
+                        {action.toLowerCase()} e siga as instruções.
+                      </p>
+                    </div>
+                  </div>
+                )
+              )}
+            </section>
+
+            {/* SERVIÇOS */}
+            <section className="space-y-6 mb-20">
+              <h2 className="text-3xl font-semibold text-main-pink">
+                Serviços
+              </h2>
+              {["Como editar", "Como excluir", "Como criar"].map(
+                (action, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4"
+                  >
+                    <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
+                      <span>Foto/Ícone</span>
+                    </div>
+                    <div className="w-full md:w-2/3">
+                      <h3 className="font-semibold text-lg">
+                        {action} um serviço
+                      </h3>
+                      <p>
+                        Clique na opção correspondente no painel de serviços
+                        para
+                        {action.toLowerCase()} e siga as instruções.
+                      </p>
+                    </div>
+                  </div>
+                )
+              )}
+            </section>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -2994,7 +3182,7 @@ export default function AdminPage() {
     <div className="min-h-screen w-full flex">
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg transform ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-900 shadow-lg transform ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } transition-transform duration-300 ease-in-out`}
       >

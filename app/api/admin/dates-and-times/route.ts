@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { dates_and_times } = data;
-    console.log(dates_and_times);
+    //console.log(dates_and_times);
 
     return NextResponse.json({ dates_and_times }, { status: 200 });
   } catch (error) {
