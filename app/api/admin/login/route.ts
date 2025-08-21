@@ -61,7 +61,9 @@ export async function POST(req: Request) {
         if (errorUser) {
           console.error("Erro no login: ", errorUser.message);
           return NextResponse.json(
-            { message: "Erro no login do usuário, tente novamente" },
+            {
+              message: "Credenciais inválidas. Verifique seu usuário e senha.",
+            },
             { status: 401 }
           );
         }
