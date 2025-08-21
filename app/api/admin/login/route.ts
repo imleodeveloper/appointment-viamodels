@@ -10,7 +10,7 @@ export async function POST(req: Request) {
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Credenciais inválidas" },
+        { message: "Credenciais inválidas" },
         { status: 400 }
       );
     }
@@ -23,33 +23,64 @@ export async function POST(req: Request) {
       .single();
 
     if (confirmSlug) {
-      const { data: user, error: errorUser } =
-        await supabase.auth.signInWithPassword({
-          email: email,
-          password: password,
-        });
+      const { data: userPlan, error: errorPlan } = await supabaseAdmin
+        .from("users_plan")
+        .select("*")
+        .eq("user_id", confirmSlug.id)
+        .single();
 
-      //console.log("User: ", user);
-
-      if (errorUser) {
-        console.error("Erro no login: ", errorUser.message);
-        return NextResponse.json({ error: errorUser.message }, { status: 401 });
+      if (errorPlan) {
+        console.log("Não foi possível encontrar plano de usuário:", errorPlan);
+        return NextResponse.json(
+          {
+            message: "Não foi encontrado o plano do usuário, tente novamente.",
+          },
+          { status: 404 }
+        );
       }
 
-      return NextResponse.json(
-        {
-          user: {
-            id: user.user.id,
-            email: user.user.email,
+      if (userPlan.status === "expired") {
+        return NextResponse.json(
+          {
+            message:
+              "Plano expirado será necessário renovar para entrar novamente. ",
           },
-          session: {
-            access_token: user.session.access_token,
-            refresh_token: user.session.refresh_token,
-            expires_at: user.session.expires_at,
+          { status: 401 }
+        );
+      }
+
+      if (userPlan.status === "active") {
+        const { data: user, error: errorUser } =
+          await supabase.auth.signInWithPassword({
+            email: email,
+            password: password,
+          });
+
+        //console.log("User: ", user);
+
+        if (errorUser) {
+          console.error("Erro no login: ", errorUser.message);
+          return NextResponse.json(
+            { message: "Erro no login do usuário, tente novamente" },
+            { status: 401 }
+          );
+        }
+
+        return NextResponse.json(
+          {
+            user: {
+              id: user.user.id,
+              email: user.user.email,
+            },
+            session: {
+              access_token: user.session.access_token,
+              refresh_token: user.session.refresh_token,
+              expires_at: user.session.expires_at,
+            },
           },
-        },
-        { status: 200 }
-      );
+          { status: 200 }
+        );
+      }
     } else if (errorSlug || !confirmSlug) {
       return NextResponse.json(
         {

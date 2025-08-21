@@ -19,6 +19,7 @@ export default function HomePage() {
 
   useEffect(() => {
     checkSlug();
+    slugHasPlan();
     fetchServices();
     // Auto-complete past appointments when page loads
     autoCompletePastAppointments();
@@ -40,6 +41,30 @@ export default function HomePage() {
       }
     } catch (err) {
       console.error("Não foi possível fazer contato com o servidor. ", err);
+    }
+  };
+
+  // Checa se o slug existente, possuí plano ativo ou expirado
+  const slugHasPlan = async () => {
+    try {
+      const response = await fetch("/api/home/check-slug/check-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(slug),
+      });
+
+      const data = await response.json();
+      console.log(data);
+
+      if (data.notAuthorized) {
+        alert(data.notAuthorized);
+        setTimeout(() => {
+          window.location.href = "https://privtime.vercel.app/";
+        }, 2000);
+        return;
+      }
+    } catch (error) {
+      console.error("Erro interno no servidor: ", error);
     }
   };
 

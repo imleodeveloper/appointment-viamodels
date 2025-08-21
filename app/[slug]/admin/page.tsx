@@ -71,6 +71,7 @@ import {
   Cell,
 } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Image from "next/image";
 
 interface Admin {
   id: string;
@@ -349,24 +350,25 @@ export default function AdminPage() {
       const { data: monthlyAppointments, error } = await query;
 
       if (error) throw error;
+      console.log("Esse aqui é undefined:", monthlyAppointments);
 
       const cancelamentos =
-        monthlyAppointments?.filter((apt) => apt.status === "cancelled")
+        monthlyAppointments.filter((apt) => apt.status === "cancelled")
           .length || 0;
       const concluidos =
-        monthlyAppointments?.filter((apt) => apt.status === "completed")
+        monthlyAppointments.filter((apt) => apt.status === "completed")
           .length || 0;
 
       const valorTotal =
         monthlyAppointments
-          ?.filter((apt) => apt.status === "completed")
+          .filter((apt) => apt.status === "completed")
           .reduce((total, apt) => total + (apt.service?.price || 0), 0) || 0;
 
       // Contar serviços utilizados
       const serviceCount: { [key: string]: { count: number; value: number } } =
         {};
 
-      monthlyAppointments?.forEach((apt) => {
+      monthlyAppointments.forEach((apt) => {
         if (apt.service?.name) {
           if (!serviceCount[apt.service.name]) {
             serviceCount[apt.service.name] = { count: 0, value: 0 };
@@ -495,7 +497,7 @@ export default function AdminPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Erro ao logar, usuário e senha incorretos.");
+        alert(data.message);
         return;
       }
 
@@ -664,7 +666,7 @@ export default function AdminPage() {
       );
 
       const data = await response.json();
-      console.log(data.professionals);
+      // console.log(data.professionals);
       if (response.ok || data.professionals) {
         setProfessionals(data.professionals || []);
       }
@@ -2987,189 +2989,136 @@ export default function AdminPage() {
         );
 
       case "help":
+        const answersHelps = [
+          {
+            title_section: "Agendamentos",
+            answers_section: {
+              answer_1: {
+                subtitle: "Como concluir o agendamento",
+                image: "/como-concluir-agendamento.webp",
+                text: "Após finalizar o serviço do horário, marque o agendamento como concluído. Isso atualiza o status para todos os envolvidos.",
+              },
+              answer_2: {
+                subtitle: "Como cancelar o agendamento",
+                image: "/como-cancelar-agendamento.webp",
+                text: "Clique no agendamento que deseja cancelar, confirme a ação e o cliente será notificado automaticamente.",
+              },
+              answer_3: {
+                subtitle: "Como excluir o agendamento",
+                image: "/como-excluir-agendamento.webp",
+                text: "Clique no botão de cancelar no agendamento que deseja executar esta ação, confirme a ação e o sistema será atualizado automaticamente.",
+              },
+            },
+          },
+          {
+            title_section: "Sua Agenda",
+            answers_section: {
+              answer_1: {
+                subtitle: "Selecione um dia da semana",
+                image: "/selecione-o-dia.webp",
+                text: "Escolha o dia que deseja configurar seus horários disponíveis no app.",
+              },
+              answer_2: {
+                subtitle: "Selecione os horários",
+                image: "/selecione-horario.webp",
+                text: "Marque os intervalos disponíveis para atendimento neste dia.",
+              },
+              answer_3: {
+                subtitle: "Como adicionar novo horário",
+                image: "/adicionar-horario.webp",
+                text: "Clique em 'Adicionar Horário', escolha o período e confirme para adicioná-lo.",
+              },
+              answer_4: {
+                subtitle: "Salvar alterações",
+                image: "/salvar-horario.webp",
+                text: "Não esqueça de clicar em 'Salvar' após configurar seus horários para garantir que as alterações sejam registradas.",
+              },
+            },
+          },
+          {
+            title_section: "Relatórios",
+            answers_section: {
+              answer_1: {
+                subtitle: "Visão geral dos relatórios",
+                image: "/relatorio-mensal.webp",
+                text: "Analise a visão geral dos serviços, ranking por utilização, porcentagem de serviços, filtro por mês e profissionais.",
+              },
+            },
+          },
+          {
+            title_section: "Profissionais",
+            answers_section: {
+              answer_1: {
+                subtitle: "Como editar um profissional",
+                image: "/editar-profissional.webp",
+                text: "Clique na opção correspondente no painel de profissionais para editar e siga as instruções.",
+              },
+              answer_2: {
+                subtitle: "Como excluir um profissional",
+                image: "/excluir-profissional.webp",
+                text: "Clique na opção correspondente no painel de profissionais para excluir e siga as instruções.",
+              },
+              answer_3: {
+                subtitle: "Como criar um profissional",
+                image: "/criar-profissional.webp",
+                text: "Clique na opção correspondente no painel de profissionais para criar e siga as instruções.",
+              },
+            },
+          },
+          {
+            title_section: "Serviços",
+            answers_section: {
+              answer_1: {
+                subtitle: "Como editar um serviço",
+                image: "/editar-servico.webp",
+                text: "Clique na opção correspondente no painel de serviços para editar e siga as instruções.",
+              },
+              answer_2: {
+                subtitle: "Como excluir um serviço",
+                image: "/excluir-servico.webp",
+                text: "Clique na opção correspondente no painel de serviços para excluir e siga as instruções.",
+              },
+              answer_3: {
+                subtitle: "Como criar um serviço",
+                image: "/criar-servico.webp",
+                text: "Clique na opção correspondente no painel de serviços para criar e siga as instruções.",
+              },
+            },
+          },
+        ];
         return (
           <div className="max-w-4xl mx-auto p-6 space-y-12">
             <h1 className="text-4xl font-bold text-main-purple text-center">
               Central de Ajuda
             </h1>
 
-            {/* AGENDAMENTOS */}
-            <section className="space-y-6">
-              <h2 className="text-3xl font-semibold text-main-pink">
-                Agendamentos
-              </h2>
+            {answersHelps.map((answer, index) => (
+              <section className="space-y-6" key={index}>
+                <h2 className="text-3xl font-semibold text-main-pink">
+                  {answer.title_section}
+                </h2>
 
-              <div className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4">
-                <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
-                  <span>Foto/Ícone</span>
-                </div>
-                <div className="w-full md:w-2/3">
-                  <h3 className="font-semibold text-lg">
-                    Como concluir agendamento
-                  </h3>
-                  <p>
-                    Após o cliente confirmar o horário, marque o agendamento
-                    como concluído. Isso atualiza o status para todos os
-                    envolvidos.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4">
-                <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
-                  <span>Foto/Ícone</span>
-                </div>
-                <div className="w-full md:w-2/3">
-                  <h3 className="font-semibold text-lg">
-                    Como cancelar agendamento
-                  </h3>
-                  <p>
-                    Clique no agendamento que deseja cancelar, confirme a ação e
-                    o cliente será notificado automaticamente.
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* SUA AGENDA */}
-            <section className="space-y-6">
-              <h2 className="text-3xl font-semibold text-main-pink">
-                Sua Agenda
-              </h2>
-
-              <div className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4">
-                <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
-                  <span>Foto/Ícone</span>
-                </div>
-                <div className="w-full md:w-2/3">
-                  <h3 className="font-semibold text-lg">
-                    Selecione um dia da semana
-                  </h3>
-                  <p>
-                    Escolha o dia que deseja configurar seus horários
-                    disponíveis no app.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4">
-                <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
-                  <span>Foto/Ícone</span>
-                </div>
-                <div className="w-full md:w-2/3">
-                  <h3 className="font-semibold text-lg">
-                    Selecione os horários
-                  </h3>
-                  <p>
-                    Marque os intervalos disponíveis para atendimento neste dia.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4">
-                <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
-                  <span>Foto/Ícone</span>
-                </div>
-                <div className="w-full md:w-2/3">
-                  <h3 className="font-semibold text-lg">
-                    Como adicionar novo horário
-                  </h3>
-                  <p>
-                    Clique em "Adicionar Horário", escolha o período e confirme
-                    para adicioná-lo.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4">
-                <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
-                  <span>Foto/Ícone</span>
-                </div>
-                <div className="w-full md:w-2/3">
-                  <h3 className="font-semibold text-lg">Salvar alterações</h3>
-                  <p>
-                    Não esqueça de clicar em "Salvar" após configurar seus
-                    horários para garantir que as alterações sejam registradas.
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* RELATÓRIOS */}
-            <section className="space-y-6">
-              <h2 className="text-3xl font-semibold text-main-pink">
-                Relatórios
-              </h2>
-              <div className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4">
-                <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
-                  <span>Foto/Ícone</span>
-                </div>
-                <div className="w-full md:w-2/3">
-                  <p>
-                    Analise a visão geral dos serviços, ranking por utilização,
-                    porcentagem de serviços, filtro por mês e profissionais.
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* PROFISSIONAIS */}
-            <section className="space-y-6">
-              <h2 className="text-3xl font-semibold text-main-pink">
-                Profissionais
-              </h2>
-              {["Como editar", "Como excluir", "Como criar"].map(
-                (action, i) => (
+                {Object.values(answer.answers_section).map((item: any, idx) => (
                   <div
-                    key={i}
-                    className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4"
+                    key={idx}
+                    className="flex flex-col justify-center items-center gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4"
                   >
-                    <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
-                      <span>Foto/Ícone</span>
+                    <div className="w-5/6 relative h-60 bg-gray-200 flex justify-center items-center rounded-lg">
+                      <Image
+                        src={item.image}
+                        alt=""
+                        fill
+                        className="object-cover rounded-xl shadow-xl hover:transform hover:scale-150 transition-all duration-300"
+                      />
                     </div>
-                    <div className="w-full md:w-2/3">
-                      <h3 className="font-semibold text-lg">
-                        {action} um profissional
-                      </h3>
-                      <p>
-                        Clique na opção correspondente no painel de
-                        profissionais para
-                        {action.toLowerCase()} e siga as instruções.
-                      </p>
+                    <div className="w-full">
+                      <h3 className="font-semibold text-lg">{item.subtitle}</h3>
+                      <p>{item.text}</p>
                     </div>
                   </div>
-                )
-              )}
-            </section>
-
-            {/* SERVIÇOS */}
-            <section className="space-y-6 mb-20">
-              <h2 className="text-3xl font-semibold text-main-pink">
-                Serviços
-              </h2>
-              {["Como editar", "Como excluir", "Como criar"].map(
-                (action, i) => (
-                  <div
-                    key={i}
-                    className="flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4"
-                  >
-                    <div className="w-full md:w-1/3 h-32 bg-gray-200 flex justify-center items-center rounded-lg">
-                      <span>Foto/Ícone</span>
-                    </div>
-                    <div className="w-full md:w-2/3">
-                      <h3 className="font-semibold text-lg">
-                        {action} um serviço
-                      </h3>
-                      <p>
-                        Clique na opção correspondente no painel de serviços
-                        para
-                        {action.toLowerCase()} e siga as instruções.
-                      </p>
-                    </div>
-                  </div>
-                )
-              )}
-            </section>
+                ))}
+              </section>
+            ))}
           </div>
         );
 

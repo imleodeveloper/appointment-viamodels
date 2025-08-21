@@ -4,7 +4,7 @@ import { NextResponse, NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
   const slug = await request.json();
-  console.log("Slug: ", slug);
+  //console.log("Slug: ", slug);
   try {
     const { data: slugData, error: slugError } = await supabaseAdmin
       .from("profiles")

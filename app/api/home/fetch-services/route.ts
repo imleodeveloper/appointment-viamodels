@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       .eq("active", true)
       .order("name");
 
-    console.log("Data: ", data);
+    //console.log("Data: ", data);
 
     if (error) {
       console.log(
