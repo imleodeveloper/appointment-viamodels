@@ -825,11 +825,11 @@ export default function AdminPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Erro ao criar profissional");
+        alert(data.message);
         return;
       }
 
-      alert("Profissional criado com sucesso!");
+      alert(data.message);
       setIsCreateProfessionalOpen(false);
       resetProfessionalForm();
       fetchProfessionals();
@@ -2177,12 +2177,15 @@ export default function AdminPage() {
                 open={isCreateProfessionalOpen}
                 onOpenChange={setIsCreateProfessionalOpen}
               >
-                <DialogTrigger asChild>
-                  <Button className="bg-main-purple hover:bg-main-pink text-white">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Profissional
-                  </Button>
-                </DialogTrigger>
+                <div className="flex justify-center items-center gap-2">
+                  <span className="text-sm text-gray-700">Máx: 5</span>
+                  <DialogTrigger asChild>
+                    <Button className="bg-main-purple hover:bg-main-pink text-white">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Novo Profissional
+                    </Button>
+                  </DialogTrigger>
+                </div>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>Criar Novo Profissional</DialogTitle>

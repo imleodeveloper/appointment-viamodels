@@ -39,48 +39,72 @@ export async function POST(req: Request) {
       );
     }
 
-    // Criar profissional
-    const { data: professional, error: profError } = await supabaseAdmin
+    const { data: lengthProfessional, error: lengthError } = await supabaseAdmin
       .from("professionals")
-      .insert({
-        slug_link,
-        name,
-        email: email || null,
-        phone: phone || null,
-        specialties: specialties || [],
-        active: true,
-      })
-      .select()
-      .single();
+      .select("*")
+      .eq("slug_link", slug_link);
 
-    if (profError) {
-      if (profError.code === "23505") {
-        return NextResponse.json(
-          { error: "Email já está em uso" },
-          { status: 400 }
-        );
-      }
-      throw profError;
+    if (lengthError) {
+      console.log("Não foi encontrado nenhum profissional");
+      // Não é um erro, usuário pode não ter criado profissional
     }
 
-    // Associar serviços se fornecidos
-    if (serviceIds && serviceIds.length > 0) {
-      const serviceRelations = serviceIds.map((serviceId: string) => ({
-        slug_link,
-        professional_id: professional.id,
-        service_id: serviceId,
-      }));
+    const quantityProf = lengthProfessional?.length;
 
-      const { error: serviceError } = await supabaseAdmin
-        .from("professional_services")
-        .insert(serviceRelations);
+    if (quantityProf && quantityProf <= 4) {
+      console.log(quantityProf);
+      // Criar profissional
+      const { data: professional, error: profError } = await supabaseAdmin
+        .from("professionals")
+        .insert({
+          slug_link,
+          name,
+          email: email || null,
+          phone: phone || null,
+          specialties: specialties || [],
+          active: true,
+        })
+        .select()
+        .single();
 
-      if (serviceError) {
-        console.error("Erro ao associar serviços:", serviceError);
+      if (profError) {
+        if (profError.code === "23505") {
+          return NextResponse.json(
+            { error: "Email já está em uso" },
+            { status: 400 }
+          );
+        }
+        throw profError;
       }
-    }
 
-    return NextResponse.json({ professional }, { status: 201 });
+      // Associar serviços se fornecidos
+      if (serviceIds && serviceIds.length > 0) {
+        const serviceRelations = serviceIds.map((serviceId: string) => ({
+          slug_link,
+          professional_id: professional.id,
+          service_id: serviceId,
+        }));
+
+        const { error: serviceError } = await supabaseAdmin
+          .from("professional_services")
+          .insert(serviceRelations);
+
+        if (serviceError) {
+          console.error("Erro ao associar serviços:", serviceError);
+        }
+      }
+
+      return NextResponse.json(
+        { message: "Profissional criado com sucesso!", professional },
+        { status: 201 }
+      );
+    } else if (quantityProf && quantityProf > 5) {
+      console.log(quantityProf);
+      return NextResponse.json(
+        { message: "Limite de profissionais atingidos, máximo: 5." },
+        { status: 401 }
+      );
+    }
   } catch (error) {
     console.error("Erro ao criar profissional:", error);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
