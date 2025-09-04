@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import bcrypt from "bcryptjs";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function POST(req: Request) {
@@ -39,14 +38,49 @@ export async function POST(req: Request) {
         );
       }
 
-      if (userPlan.status === "expired") {
+      if (
+        userPlan.status === "expired" ||
+        userPlan.status === "expired-canceled" ||
+        userPlan.status === "canceled"
+      ) {
         return NextResponse.json(
           {
             message:
-              "Plano expirado será necessário renovar para entrar novamente. ",
+              "Plano expirado ou cancelado, será necessário renovar para entrar novamente. ",
           },
           { status: 401 }
         );
+      }
+
+      if (userPlan.status === "active" || userPlan.status === "canceled") {
+        const createdAt = new Date(userPlan.created_at);
+        const today = new Date();
+        const differenceDays = today.getTime() - createdAt.getTime();
+        const convertDays = differenceDays / (1000 * 60 * 60 * 24);
+        if (
+          (userPlan.slug_plan_at_moment === "trial_plan" && convertDays >= 7) ||
+          (userPlan.slug_plan_at_moment === "annual_plan" &&
+            convertDays >= 365) ||
+          (userPlan.slug_plan_at_moment === "monthly_plan" &&
+            convertDays >= 31) ||
+          (userPlan.slug_plan_at_moment === "test_plan" && convertDays >= 31)
+        ) {
+          const { error } = await supabaseAdmin
+            .from("users_plan")
+            .update({
+              status:
+                userPlan.status === "active" ? "expired" : "expired-canceled",
+            })
+            .eq("user_id", confirmSlug.id);
+
+          if (error) {
+            console.log("Erro ao fazer login, e expirar plano", error);
+            return NextResponse.json(
+              { message: "Erro ao fazer login, e expirar plano" },
+              { status: 500 }
+            );
+          }
+        }
       }
 
       if (userPlan.status === "active") {
@@ -127,6 +161,9 @@ export async function POST(req: Request) {
     ); */
   } catch (error) {
     console.error("Erro na API de login:", error);
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Erro interno do servidor" },
+      { status: 500 }
+    );
   }
 }
