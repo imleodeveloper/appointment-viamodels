@@ -496,21 +496,27 @@ export default function AdminPage() {
       });
 
       const data = await res.json();
+      const { user, session } = data;
       if (!res.ok) {
         alert(data.message);
         return;
       }
 
+      await supabase.auth.setSession({
+        access_token: session,
+        refresh_token: session.refresh_token,
+      });
+
+      setIsAuthenticated(true);
+      fetchProfessionals();
+      fetchAllServices();
       //sessionStorage.setItem("adminAuth", JSON.stringify(data.admin));
       //setCurrentAdmin(data.admin);
-      setIsAuthenticated(true);
       //fetchAppointments(data.admin);
       //if (data.admin.role === "super_admin") {
       //  fetchAdmins();
       //}
-      fetchProfessionals();
       //fetchServices(data.admin);
-      fetchAllServices();
       //fetchAvailableMonths(data.admin);
       //fetchMonthlyReport(data.admin, selectedMonth);
     } catch (error) {
@@ -2998,18 +3004,15 @@ export default function AdminPage() {
             answers_section: {
               answer_1: {
                 subtitle: "Como concluir o agendamento",
-                image: "/como-concluir-agendamento.webp",
+                image_desktop: "/como-concluir-agendamento.webp",
+                image_mobile: "/finish-appointment.webp",
                 text: "Após finalizar o serviço do horário, marque o agendamento como concluído. Isso atualiza o status para todos os envolvidos.",
               },
               answer_2: {
                 subtitle: "Como cancelar o agendamento",
-                image: "/como-cancelar-agendamento.webp",
+                image_desktop: "/como-cancelar-agendamento.webp",
+                image_mobile: "/cancel-appointment.webp",
                 text: "Clique no agendamento que deseja cancelar, confirme a ação e o cliente será notificado automaticamente.",
-              },
-              answer_3: {
-                subtitle: "Como excluir o agendamento",
-                image: "/como-excluir-agendamento.webp",
-                text: "Clique no botão de cancelar no agendamento que deseja executar esta ação, confirme a ação e o sistema será atualizado automaticamente.",
               },
             },
           },
@@ -3018,22 +3021,26 @@ export default function AdminPage() {
             answers_section: {
               answer_1: {
                 subtitle: "Selecione um dia da semana",
-                image: "/selecione-o-dia.webp",
+                image_desktop: "/selecione-o-dia.webp",
+                image_mobile: "/select-time.webp",
                 text: "Escolha o dia que deseja configurar seus horários disponíveis no app.",
               },
               answer_2: {
                 subtitle: "Selecione os horários",
-                image: "/selecione-horario.webp",
+                image_desktop: "/selecione-horario.webp",
+                image_mobile: "/select-time.webp",
                 text: "Marque os intervalos disponíveis para atendimento neste dia.",
               },
               answer_3: {
                 subtitle: "Como adicionar novo horário",
-                image: "/adicionar-horario.webp",
+                image_desktop: "/adicionar-horario.webp",
+                image_mobile: "/add-time.webp",
                 text: "Clique em 'Adicionar Horário', escolha o período e confirme para adicioná-lo.",
               },
               answer_4: {
                 subtitle: "Salvar alterações",
-                image: "/salvar-horario.webp",
+                image_desktop: "/salvar-horario.webp",
+                image_mobile: "/save-time.webp",
                 text: "Não esqueça de clicar em 'Salvar' após configurar seus horários para garantir que as alterações sejam registradas.",
               },
             },
@@ -3043,7 +3050,8 @@ export default function AdminPage() {
             answers_section: {
               answer_1: {
                 subtitle: "Visão geral dos relatórios",
-                image: "/relatorio-mensal.webp",
+                image_desktop: "/relatorio-mensal.webp",
+                image_mobile: "/reports.webp",
                 text: "Analise a visão geral dos serviços, ranking por utilização, porcentagem de serviços, filtro por mês e profissionais.",
               },
             },
@@ -3053,17 +3061,20 @@ export default function AdminPage() {
             answers_section: {
               answer_1: {
                 subtitle: "Como editar um profissional",
-                image: "/editar-profissional.webp",
+                image_desktop: "/editar-profissional.webp",
+                image_mobile: "/create-professional.webp",
                 text: "Clique na opção correspondente no painel de profissionais para editar e siga as instruções.",
               },
               answer_2: {
                 subtitle: "Como excluir um profissional",
-                image: "/excluir-profissional.webp",
+                image_desktop: "/excluir-profissional.webp",
+                image_mobile: "/buttons-professional.webp",
                 text: "Clique na opção correspondente no painel de profissionais para excluir e siga as instruções.",
               },
               answer_3: {
                 subtitle: "Como criar um profissional",
-                image: "/criar-profissional.webp",
+                image_desktop: "/criar-profissional.webp",
+                image_mobile: "/create-professional.webp",
                 text: "Clique na opção correspondente no painel de profissionais para criar e siga as instruções.",
               },
             },
@@ -3073,17 +3084,20 @@ export default function AdminPage() {
             answers_section: {
               answer_1: {
                 subtitle: "Como editar um serviço",
-                image: "/editar-servico.webp",
+                image_desktop: "/editar-servico.webp",
+                image_mobile: "/services-edit-delete.webp",
                 text: "Clique na opção correspondente no painel de serviços para editar e siga as instruções.",
               },
               answer_2: {
                 subtitle: "Como excluir um serviço",
-                image: "/excluir-servico.webp",
+                image_desktop: "/excluir-servico.webp",
+                image_mobile: "/services-edit-delete.webp",
                 text: "Clique na opção correspondente no painel de serviços para excluir e siga as instruções.",
               },
               answer_3: {
                 subtitle: "Como criar um serviço",
-                image: "/criar-servico.webp",
+                image_desktop: "/criar-servico.webp",
+                image_mobile: "/services-create.webp",
                 text: "Clique na opção correspondente no painel de serviços para criar e siga as instruções.",
               },
             },
@@ -3106,9 +3120,17 @@ export default function AdminPage() {
                     key={idx}
                     className="flex flex-col justify-center items-center gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-md p-4"
                   >
-                    <div className="w-5/6 relative h-60 bg-gray-200 flex justify-center items-center rounded-lg">
+                    <div className="w-[90%] sm:w-[80%] md:hidden relative h-96 bg-gray-200 flex justify-center items-center rounded-lg">
                       <Image
-                        src={item.image}
+                        src={item.image_mobile}
+                        alt=""
+                        fill
+                        className="object-cover rounded-xl shadow-xl hover:transform hover:scale-150 transition-all duration-300"
+                      />
+                    </div>
+                    <div className="hidden md:visible w-5/6 relative h-60 bg-gray-200 flex justify-center items-center rounded-lg">
+                      <Image
+                        src={item.image_desktop}
                         alt=""
                         fill
                         className="object-cover rounded-xl shadow-xl hover:transform hover:scale-150 transition-all duration-300"
