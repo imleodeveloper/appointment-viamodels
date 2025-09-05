@@ -51,7 +51,13 @@ export async function POST(req: Request) {
 
     const quantityProf = lengthProfessional?.length;
 
-    if (quantityProf && quantityProf <= 4) {
+    if (quantityProf && quantityProf > 5) {
+      console.log(quantityProf);
+      return NextResponse.json(
+        { message: "Limite de profissionais atingidos, máximo: 5." },
+        { status: 401 }
+      );
+    } else {
       console.log(quantityProf);
       // Criar profissional
       const { data: professional, error: profError } = await supabaseAdmin
@@ -97,12 +103,6 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { message: "Profissional criado com sucesso!", professional },
         { status: 201 }
-      );
-    } else if (quantityProf && quantityProf > 5) {
-      console.log(quantityProf);
-      return NextResponse.json(
-        { message: "Limite de profissionais atingidos, máximo: 5." },
-        { status: 401 }
       );
     }
   } catch (error) {
