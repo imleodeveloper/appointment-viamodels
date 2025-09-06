@@ -503,7 +503,7 @@ export default function AdminPage() {
       }
 
       await supabase.auth.setSession({
-        access_token: session,
+        access_token: session.access_token,
         refresh_token: session.refresh_token,
       });
 
