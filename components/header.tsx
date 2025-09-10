@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/theme-context";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 
 export function Header() {
   const { theme, toggleTheme } = useTheme();
@@ -15,10 +16,16 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-0 sm:px-6 lg:px-8">
         <div className="flex justify-center gap-2 md:gap-0 md:justify-between items-center h-16 flex-wrap">
           <Link href={`/${slug}`} className="flex items-center space-x-2">
-            <Calendar className="h-8 w-8 text-main-purple" />
-            <span className="text-xl font-bold text-gray-900 dark:text-white">
-              PrivTime
-            </span>
+            {/* <Calendar className="h-8 w-8 text-main-purple" /> */}
+            <Image
+              src="/new-logo-purple.webp"
+              alt="Logo PriveTime - App de Agendamentos"
+              width={150}
+              height={50}
+            />
+            {/* <span className="text-xl font-bold text-gray-900 dark:text-white">
+              PriveTime
+            </span> */}
           </Link>
 
           <div className="flex items-center space-x-4 flex-wrap">

@@ -59,7 +59,7 @@ export default function HomePage() {
       if (data.notAuthorized) {
         alert(data.notAuthorized);
         setTimeout(() => {
-          window.location.href = "https://privtime.vercel.app/";
+          window.location.href = "https://privetime.viamodels.com.br/";
         }, 2000);
         return;
       }
@@ -133,7 +133,7 @@ export default function HomePage() {
         <Header />
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
             <p className="mt-4 text-gray-600 dark:text-gray-400">
               Carregando serviços...
             </p>
@@ -148,7 +148,7 @@ export default function HomePage() {
       <Header />
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-sub-background to-pink-400 py-12 mb-8 rounded-lg ">
+      <div className="bg-gradient-to-r from-sub-background to-pink-400 py-12 mb-8 ">
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-4 dark:text-black">
             Agende Seu Horário
