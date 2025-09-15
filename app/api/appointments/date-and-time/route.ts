@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const { data, error } = await supabaseAdmin
-      .from("profiles")
+      .from("business_profiles")
       .select("dates_and_times")
       .eq("slug_link", slug)
       .single();

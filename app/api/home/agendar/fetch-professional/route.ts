@@ -5,8 +5,6 @@ import { NextResponse, NextRequest } from "next/server";
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const { serviceId, slug } = body;
-  console.log("ServiceId", serviceId);
-  console.log("slug", slug);
 
   try {
     const { data: professionalsData, error: professionalsError } =
@@ -16,8 +14,6 @@ export async function POST(request: NextRequest) {
         .eq("slug_link", slug)
         .eq("active", true)
         .order("name");
-
-    console.log("ProfessionalsData: ", professionalsData);
 
     if (professionalsError || !professionalsData) {
       console.log(
@@ -30,10 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (professionalsData) {
-      console.log("Profissional encontrado com sucesso.");
-      return NextResponse.json({ professionalsData }, { status: 200 });
-    }
+    return NextResponse.json({ professionalsData }, { status: 200 });
   } catch (error) {
     console.error("Erro no servidor: ", error);
     return NextResponse.json(

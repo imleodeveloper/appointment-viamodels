@@ -12,7 +12,7 @@ export function Header() {
   const { slug } = useParams();
 
   return (
-    <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700">
+    <header className="w-full bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-0 sm:px-6 lg:px-8">
         <div className="flex justify-center gap-2 md:gap-0 md:justify-between items-center h-16 flex-wrap">
           <Link href={`/${slug}`} className="flex items-center space-x-2">

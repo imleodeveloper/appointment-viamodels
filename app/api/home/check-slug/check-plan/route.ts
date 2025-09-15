@@ -19,14 +19,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(data);
-
     const { data: userPlan, error: errorPlan } = await supabaseAdmin
       .from("users_plan")
       .select("*")
       .eq("user_id", data.id)
       .single();
-    console.log(userPlan);
     if (errorPlan) {
       console.log("Não foi encontrado o plano do usuário:", errorPlan);
       return NextResponse.json(

@@ -7,6 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Header } from "@/components/header";
 import { supabase, type Service, type Professional } from "@/lib/supabase";
+import Image from "next/image";
+
+interface ProfessionalUser {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  photo_professional: string | null;
+  active: boolean;
+}
 
 export default function SelectProfessionalPage() {
   const params = useParams();
@@ -15,7 +25,9 @@ export default function SelectProfessionalPage() {
   const slug = params.slug as string;
 
   const [service, setService] = useState<Service | null>(null);
-  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  // const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [photosLoaded, setPhotosLoaded] = useState(false);
+  const [professionals, setProfessionals] = useState<ProfessionalUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -65,6 +77,47 @@ export default function SelectProfessionalPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (professionals.length === 0 || photosLoaded) return;
+
+    const fetchPhotos = async () => {
+      await fetchProfessionalPhotos();
+      setPhotosLoaded(true); // marca que já carregou as fotos
+    };
+
+    fetchPhotos();
+  }, [professionals, photosLoaded]);
+
+  const fetchProfessionalPhotos = async () => {
+    // Gera signedUrls para todos os profissionais
+    const updatedProfessionals = await Promise.all(
+      professionals.map(async (prof) => {
+        if (!prof.photo_professional) return prof;
+
+        const photoPath = prof.photo_professional;
+        const bucketName = "photos_professionals";
+        const encodedPath = photoPath.split(`${bucketName}/`)[1];
+        const path = decodeURIComponent(encodedPath);
+
+        const { data, error } = await supabase.storage
+          .from("photos_professionals")
+          .createSignedUrl(path, 60 * 60);
+
+        if (error) {
+          console.error("Erro ao gerar signed URL:", error);
+          return prof;
+        }
+
+        return {
+          ...prof,
+          photo_professional: data?.signedUrl || null,
+        };
+      })
+    );
+
+    setProfessionals(updatedProfessionals);
   };
 
   const handleSelectProfessional = (professionalId: string) => {
@@ -122,18 +175,20 @@ export default function SelectProfessionalPage() {
               onClick={() => handleSelectProfessional(professional.id)}
             >
               <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-pink-100 dark:bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <User className="h-8 w-8 text-main-purple dark:text-main-purple" />
+                <div className="w-24 h-24 relative bg-pink-100 dark:bg-pink-100 rounded-full overflow-hidden flex items-center justify-center mx-auto mb-4">
+                  {professional.photo_professional ? (
+                    <Image
+                      src={professional.photo_professional}
+                      alt={professional.name}
+                      fill
+                    />
+                  ) : (
+                    <User className="h-8 w-8 text-main-purple dark:text-main-purple" />
+                  )}
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                   {professional.name}
                 </h3>
-                {professional.specialties &&
-                  professional.specialties.length > 0 && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {professional.specialties.join(", ")}
-                    </p>
-                  )}
               </CardContent>
             </Card>
           ))}

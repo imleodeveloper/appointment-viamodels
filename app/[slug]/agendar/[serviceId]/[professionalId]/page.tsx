@@ -1,305 +1,298 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Calendar, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Header } from "@/components/header";
-import { supabase, type Service, type Professional } from "@/lib/supabase";
+import { useParams, useRouter } from "next/navigation";
+import { addDays, format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { supabase } from "@/lib/supabase";
+
+type TimeRange = {
+  start: string;
+  end: string;
+};
 
 type WeekAvailability = {
-  [key: number]: string[];
+  [key: number]: TimeRange[];
 };
 
 export default function SelectDateTimePage() {
-  const params = useParams();
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const params = useParams();
+  const [datesAndTimes, setDatesAndTimes] = useState<WeekAvailability | null>(
+    null
+  );
+  const [bookedTimes, setBookedTimes] = useState<string[]>([]);
+  const [nameProfessional, setNameProfessional] = useState<string>("");
+  const [infoService, setInfoService] = useState({
+    name: "",
+    duration_minutes: "",
+  });
+  const [timeSlots, setTimeSlots] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const slug = params.slug as string;
   const serviceId = params.serviceId as string;
   const professionalId = params.professionalId as string;
 
-  const [service, setService] = useState<Service | null>(null);
-  const [professional, setProfessional] = useState<Professional | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>("");
-  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
-  const [bookedTimes, setBookedTimes] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filteredDates, setFilteredDates] = useState<Date[]>([]);
-  const [datesAndTimes, setDatesAndTimes] = useState<WeekAvailability>({
-    1: [],
-    2: [],
-    3: [],
-    4: [],
-    5: [],
-    6: [],
-    7: [],
-  });
-
-  useEffect(() => {
-    if (serviceId && professionalId) {
-      fetchData();
-    }
-  }, [serviceId, professionalId]);
-
-  useEffect(() => {
-    if (selectedDate) {
-      fetchAvailableTimes();
-    }
-  }, [selectedDate, professionalId]);
-
-  // Busca as datas e horários setados pelo admin
   useEffect(() => {
     fetchDatesAndTimes();
   }, [slug]);
-
-  // Cálculo de dias do mês existentes pelo informado dos administradores.
-  useEffect(() => {
-    if (Object.values(datesAndTimes).some((times) => times.length > 0)) {
-      setFilteredDates(generateAvailableDatesForMonth(45));
-    }
-  }, [datesAndTimes]);
-
-  const fetchData = async () => {
+  const fetchDatesAndTimes = async () => {
+    if (!slug) return;
+    setLoading(true);
     try {
-      // Fetch service
-      const { data: serviceData, error: serviceError } = await supabase
-        .from("services")
-        .select("*")
-        .eq("id", serviceId)
-        .single();
+      const response = await fetch(
+        "/api/appointments/agendar/fetch-dates-and-time",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug }),
+        }
+      );
 
-      if (serviceError) throw serviceError;
-      setService(serviceData);
+      const data = await response.json();
 
-      // Fetch professional
-      const { data: professionalData, error: professionalError } =
-        await supabase
-          .from("professionals")
-          .select("*")
-          .eq("id", professionalId)
-          .single();
+      if (!response.ok) {
+        alert(data.message);
+        setLoading(false);
+        return;
+      }
 
-      if (professionalError) throw professionalError;
-      setProfessional(professionalData);
+      setDatesAndTimes(data.datesAndTimes.dates_and_times);
     } catch (error) {
-      console.error("Erro ao carregar dados:", error);
+      console.error(
+        "Não foi possível buscar datas e horários de agendamento:",
+        error
+      );
+      alert("Não foi possível encontrar datas e horários de agendamento.");
+      return;
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchAvailableTimes = async () => {
+  useEffect(() => {
+    if (!professionalId) return;
+
+    fetchProfessional();
+  }, [professionalId]);
+
+  const fetchProfessional = async () => {
+    if (!professionalId) return;
+    setLoading(true);
     try {
-      // Fetch existing appointments for the selected date and professional
-      const { data: appointments, error } = await supabase
-        .from("appointments")
-        .select("appointment_time")
-        .eq("professional_id", professionalId)
-        .eq("appointment_date", selectedDate)
-        .eq("slug_link", slug)
-        .eq("status", "scheduled");
+      const { data, error } = await supabase
+        .from("professionals")
+        .select("name")
+        .eq("id", professionalId)
+        .single();
 
-      if (error) throw error;
-
-      // Generate all possible times (9:00 to 18:00, every 30 minutes)
-      const allTimes = [];
-      for (let hour = 9; hour < 18; hour++) {
-        allTimes.push(`${hour.toString().padStart(2, "0")}:00`);
-        allTimes.push(`${hour.toString().padStart(2, "0")}:30`);
-      }
-
-      // Get booked times
-      const bookedTimesList =
-        appointments?.map((apt) => apt.appointment_time) || [];
-      setBookedTimes(bookedTimesList);
-
-      // Filter out booked times for available times
-      const available = allTimes.filter(
-        (time) => !bookedTimesList.includes(time)
-      );
-
-      // Filter out past times if selected date is today
-      const today = new Date();
-      const isToday = selectedDate === formatDate(today);
-
-      /*if (isToday) {
-        const currentTime = today.getHours() * 60 + today.getMinutes();
-        const filteredTimes = available.filter((time) => {
-          const [hours, minutes] = time.split(":").map(Number);
-          const timeInMinutes = hours * 60 + minutes;
-          return timeInMinutes > currentTime + 30; // Add 30 minutes buffer
-        });
-        setAvailableTimes(filteredTimes);
-      } else {
-        setAvailableTimes(available);
-      } */
-    } catch (error) {
-      console.error("Erro ao carregar horários:", error);
-    }
-  };
-
-  const fetchDatesAndTimes = async () => {
-    try {
-      const response = await fetch("/api/appointments/date-and-time", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug }),
-      });
-
-      const data = await response.json();
-      const { dates_and_times } = data;
-      if (!response.ok) {
-        alert("Não foi possível encontrar datas e horários para agendamentos");
+      if (error) {
+        alert("Esse profissional não existe mais.");
         return;
       }
 
-      setDatesAndTimes(dates_and_times);
+      setNameProfessional(data.name);
+      setLoading(false);
     } catch (error) {
-      console.error("Erro interno no servidor: ", error);
-      alert("Erro inesperado no servidor");
+      alert("Não foi possível buscar profissional, erro interno do servidor");
+      console.error("Erro interno do servidor: ", error);
+      setLoading(false);
       return;
     }
   };
 
-  const generateDates = () => {
-    const dates: Date[] = [];
-    const today = new Date();
+  useEffect(() => {
+    if (!serviceId) return;
 
-    for (let i = 0; i < 21; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      const weekday = date.getDay(); // 0 = domingo ... 6 = sábado
-      if (datesAndTimes[weekday]?.length > 0) {
-        dates.push(date);
-      }
-    }
+    fetchService();
+  }, [serviceId]);
+  const fetchService = async () => {
+    if (!serviceId) return;
+    setLoading(true);
 
-    return dates;
-  };
-
-  const generateAvailableDatesForMonth = (daysAhead = 30) => {
-    const today = new Date();
-    const result: Date[] = [];
-
-    for (let day = 0; day <= daysAhead; day++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + day);
-
-      const jsDay = date.getDay();
-      const convertedDay = jsDay === 0 ? 7 : jsDay;
-
-      if (datesAndTimes[convertedDay]?.length > 0) {
-        result.push(date);
-      }
-    }
-    return result;
-  };
-
-  const formatDate = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  const getCurrentMonth = () => {
-    if (!selectedDate) return "";
-    const [year, month, day] = selectedDate.split("-").map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString("pt-BR", {
-      month: "long",
-      year: "numeric",
-    });
-  };
-
-  const getAllTimes = () => {
-    const allTimes = [];
-    for (let hour = 9; hour < 18; hour++) {
-      allTimes.push(`${hour.toString().padStart(2, "0")}:00`);
-      allTimes.push(`${hour.toString().padStart(2, "0")}:30`);
-    }
-    return allTimes;
-  };
-
-  const isTimeAvailable = (time: string) => {
-    return availableTimes.includes(time);
-  };
-
-  const isTimeBooked = (time: string) => {
-    return bookedTimes.includes(time);
-  };
-
-  const isTimePast = (time: string) => {
-    if (!selectedDate) return false;
-
-    const today = new Date();
-    const isToday = selectedDate === formatDate(today);
-
-    if (!isToday) return false;
-
-    const currentTime = today.getHours() * 60 + today.getMinutes();
-    const [hours, minutes] = time.split(":").map(Number);
-    const timeInMinutes = hours * 60 + minutes;
-
-    return timeInMinutes <= currentTime + 30;
-  };
-
-  const handleTimeSelect = async (time: string) => {
-    if (!isTimeAvailable(time)) return;
-
-    // Duas verificação de disponibilidade antes de continuar
     try {
-      const response = await fetch("/api/appointments/confirm-appointment", {
+      const { data, error } = await supabase
+        .from("services")
+        .select(`name, duration_minutes`)
+        .eq("id", serviceId)
+        .single();
+
+      if (error) {
+        console.error("Não foi possível encontrar serviço:", error);
+        alert("Não foi possível encontrar serviço, tente novamente.");
+        setLoading(false);
+        return;
+      }
+
+      setInfoService({
+        name: data.name,
+        duration_minutes: data.duration_minutes,
+      });
+      setLoading(false);
+    } catch (error) {
+      alert("Não foi possível buscar serviço, erro interno do servidor");
+      console.error("Erro interno do servidor: ", error);
+      setLoading(false);
+      return;
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedDate || !professionalId) return;
+
+    fetchBooked();
+  }, [selectedDate, professionalId]);
+
+  const handleTimeSelect = async (timeSelect: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        "/api/appointments/agendar/handle-time-select",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: selectedDate,
+            professionalId,
+            timeSelect,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message);
+        setLoading(false);
+        return;
+      }
+    } catch (error) {
+      console.error(
+        "Não foi possível fazer o agendamento em sistema, erro interno:",
+        error
+      );
+      alert("Não foi possível fazer o agendamento em sistema, erro interno.");
+      setLoading(false);
+      return;
+    }
+  };
+
+  const fetchBooked = async () => {
+    if (!selectedDate || !professionalId) return;
+    setLoading(true);
+    try {
+      const response = await fetch("/api/appointments/agendar/fetch-booked", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          slug,
-          serviceId,
-          professionalId,
-          selectedDate,
-          time,
-        }),
+        body: JSON.stringify({ date: selectedDate, professionalId }),
       });
 
       const data = await response.json();
 
-      if (data.busy) {
-        alert(
-          "Este horário está ocupado por outro cliente. Por favor, escolha outro horário."
-        );
-        // Refresh available times
-        fetchAvailableTimes();
+      if (!response.ok) {
+        alert(data.message);
+        setLoading(false);
         return;
       }
 
-      // Store in sessionStorage for the confirmation page
-      sessionStorage.setItem(
-        "appointmentData",
-        JSON.stringify(data.appointmentData)
-      );
-      router.push(`/${slug}/confirmar-agendamento`);
+      setBookedTimes(data.bookedTimes);
+      setLoading(false);
     } catch (error) {
-      console.error("Erro ao verificar disponibilidade:", error);
-      alert("Erro ao verificar disponibilidade. Tente novamente.");
+      console.error("Erro agendamentos:", error);
+      alert(
+        "Erro interno, não foi possível verificar agendamentos disponíveis."
+      );
+      setLoading(false);
+      return;
     }
   };
 
-  const handleSelectDate = (date: Date) => {
-    const jsDay = date.getDay();
-    const convertedDay = jsDay === 0 ? 7 : jsDay;
-    setSelectedDate(formatDate(date));
+  const getAvailableTimes = (
+    timeSlots: string[],
+    bookedTimes: string[],
+    serviceDuration: number
+  ) => {
+    const available: string[] = [];
 
-    // Pega só os horários configurados no banco de dados para esse dia
-    setAvailableTimes(sortedTimes(datesAndTimes[convertedDay] || []));
+    for (let i = 0; i < timeSlots.length; i++) {
+      const slotStart = timeSlots[i];
+      const [slotHour, slotMinute] = slotStart.split(":").map(Number);
+      const slotStartMinutes = slotHour * 60 + slotMinute;
+      const slotEndMinutes = slotStartMinutes + serviceDuration;
+
+      // verifica se algum bookedTime interfere nesse período
+      let conflict = false;
+      for (const booked of bookedTimes) {
+        const [bookedHour, bookedMinute] = booked.split(":").map(Number);
+        const bookedStart = bookedHour * 60 + bookedMinute;
+        const bookedEnd = bookedStart + serviceDuration;
+
+        if (
+          (slotStartMinutes >= bookedStart && slotStartMinutes < bookedEnd) ||
+          (slotEndMinutes > bookedStart && slotEndMinutes <= bookedEnd) ||
+          (slotStartMinutes <= bookedStart && slotEndMinutes >= bookedEnd)
+        ) {
+          conflict = true;
+          break;
+        }
+      }
+      if (!conflict) available.push(slotStart);
+    }
+    return available;
   };
 
-  const sortedTimes = (times: string[]) => {
-    return times.sort((a, b) => {
-      const [ha, ma] = a.split(":").map(Number);
-      const [hb, mb] = b.split(":").map(Number);
-      return ha * 60 + ma - (hb * 60 + mb);
+  function getNext15Days(datesAndTimes: WeekAvailability) {
+    const days: { date: Date; hasAvailability: boolean }[] = [];
+
+    for (let i = 0; i < 15; i++) {
+      const date = addDays(new Date(), i);
+      const jsDay = date.getDay();
+      const daysOnWeek = jsDay === 0 ? 6 : jsDay - 1;
+      const hasAvailability = (datesAndTimes[daysOnWeek] ?? []).length > 0;
+      days.push({ date, hasAvailability });
+    }
+
+    return days;
+  }
+  const days = getNext15Days(datesAndTimes ?? {});
+
+  useEffect(() => {
+    if (!selectedDate || !datesAndTimes) return;
+
+    const jsDay = selectedDate.getDay();
+    const dayOfWeek = jsDay === 0 ? 6 : jsDay - 1;
+    const intervals = datesAndTimes[dayOfWeek];
+
+    const slots: string[] = [];
+    intervals.forEach(({ start, end }) => {
+      slots.push(...generateTimeSlots(start, end));
     });
+
+    setTimeSlots(slots);
+  }, [selectedDate, datesAndTimes]);
+
+  const generateTimeSlots = (start: string, end: string, stepMinutes = 30) => {
+    const slots: string[] = [];
+    const [startHour, startMinute] = start.split(":").map(Number);
+    const [endHour, endMinute] = end.split(":").map(Number);
+
+    let current = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+
+    while (current < endMinutes) {
+      const hour = Math.floor(current / 60)
+        .toString()
+        .padStart(2, "0");
+      const minute = (current % 60).toString().padStart(2, "0");
+      slots.push(`${hour}:${minute}`);
+      current += stepMinutes;
+    }
+
+    return slots;
   };
 
   if (loading) {
@@ -335,19 +328,29 @@ export default function SelectDateTimePage() {
 
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Horários Disponíveis - {getCurrentMonth()}
+              Horários Disponíveis -{" "}
+              {selectedDate
+                ? format(selectedDate, "d ' - ' MMMM", { locale: ptBR })
+                : ""}
             </h1>
-            {service && professional && (
-              <div className="text-gray-600 dark:text-gray-400">
+            <div className="text-gray-600 dark:text-gray-400">
+              {infoService && (
                 <p>
-                  Serviço: <span className="font-medium">{service.name}</span>
+                  Serviço:{" "}
+                  <span className="font-medium text-purple-500">
+                    {infoService.name}
+                  </span>
                 </p>
+              )}
+              {nameProfessional && (
                 <p>
                   Profissional:{" "}
-                  <span className="font-medium">{professional.name}</span>
+                  <span className="font-medium text-purple-500">
+                    {nameProfessional}
+                  </span>
                 </p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -360,79 +363,58 @@ export default function SelectDateTimePage() {
 
           <div className="overflow-x-auto">
             <div className="flex space-x-3 pb-4">
-              {filteredDates.map((date) => {
-                const dateStr = formatDate(date);
-                const isSelected = selectedDate === dateStr;
-                const isToday = formatDate(new Date()) === dateStr;
-
-                return (
-                  <Button
-                    key={dateStr}
-                    variant={isSelected ? "default" : "outline"}
-                    className={`min-w-[80px] flex-shrink-0 hover:bg-sub-background ${
-                      isSelected
-                        ? "bg-main-pink text-white hover:bg-main-pink"
-                        : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
-                    } ${isToday ? "ring-2 ring-pink-300" : ""}`}
-                    onClick={() => handleSelectDate(date)}
-                  >
-                    <div className="text-center">
-                      <div className="text-xs opacity-75">
-                        {date.toLocaleDateString("pt-BR", { weekday: "short" })}
-                      </div>
-                      <div className="font-semibold">{date.getDate()}</div>
+              {days.map((day, index) => (
+                <Button
+                  key={index}
+                  disabled={!day.hasAvailability}
+                  onClick={() => setSelectedDate(day.date)}
+                  className={`min-w-[80px] flex-shrink-0 ${
+                    selectedDate?.toDateString() === day.date.toDateString()
+                      ? "bg-main-purple text-white hover:bg-main-pink"
+                      : "text-black border border-purple-400 bg-white hover:bg-sub-background"
+                  }  `}
+                >
+                  <div className="text-center">
+                    <div className="text-xs opacity-75">
+                      {format(day.date, "EEE", { locale: ptBR })}
                     </div>
-                  </Button>
-                );
-              })}
+                    <div className="font-semibold">
+                      {format(day.date, "d'/'MM")}
+                    </div>
+                  </div>
+                </Button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Time Selection */}
-        {selectedDate && (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-              <Clock className="h-5 w-5 mr-2" />
-              Horários - {getCurrentMonth()}
-            </h2>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+            <Clock className="h-5 w-5 mr-2" />
+            Horários -
+          </h2>
 
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-              {availableTimes.map((time) => {
-                const available = isTimeAvailable(time);
-                const booked = isTimeBooked(time);
-                const past = isTimePast(time);
-                const disabled = !available || booked || past;
-
-                return (
-                  <Button
-                    key={time}
-                    variant="outline"
-                    disabled={disabled}
-                    className={`${
-                      available && !booked && !past
-                        ? "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-pink-50 dark:hover:bg-pink-900 border-gray-300 dark:border-gray-600"
-                        : "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-600"
-                    }`}
-                    onClick={() => handleTimeSelect(time)}
-                  >
-                    {time}
-                  </Button>
-                );
-              })}
-            </div>
-
-            {availableTimes.length === 0 && (
-              <Card className="bg-white dark:bg-gray-800 mt-4">
-                <CardContent className="p-6 text-center">
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Não há horários disponíveis para esta data.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+            {timeSlots.map((time) => {
+              const isBooked = bookedTimes.includes(time);
+              return (
+                <Button
+                  variant="outline"
+                  key={time}
+                  className={`${
+                    isBooked
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "hover:bg-main-purple hover:text-white"
+                  }`}
+                  onClick={() => handleTimeSelect(time)}
+                  disabled={isBooked}
+                >
+                  {time}
+                </Button>
+              );
+            })}
           </div>
-        )}
+        </div>
       </main>
     </div>
   );
