@@ -101,12 +101,16 @@ export default function SelectProfessionalPage() {
         const encodedPath = photoPath.split(`${bucketName}/`)[1];
         const path = decodeURIComponent(encodedPath);
 
-        const { data, error } = await supabase.storage
-          .from("photos_professionals")
-          .createSignedUrl(path, 60 * 60);
+        const response = await fetch("/api/home/fetch-business-photo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path, bucketName }),
+        });
 
-        if (error) {
-          console.error("Erro ao gerar signed URL:", error);
+        const data = await response.json();
+        if (!response.ok) {
+          console.error("Erro ao buscar foto da empresa:", data.message);
+          alert(data.message);
           return prof;
         }
 

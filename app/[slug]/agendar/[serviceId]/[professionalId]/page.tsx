@@ -404,7 +404,7 @@ export default function SelectDateTimePage() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
             <Clock className="h-5 w-5 mr-2" />
-            Horários -
+            Horários:
           </h2>
 
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">

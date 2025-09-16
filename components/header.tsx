@@ -30,8 +30,8 @@ export function Header() {
           </Link>
 
           <div className="flex items-center space-x-4 flex-wrap">
-            {pathname === "/" && (
-              <Link href={`${slug}/meus-agendamentos`}>
+            {pathname === `/${slug}` && (
+              <Link href={`/${slug}/meus-agendamentos`}>
                 <Button
                   variant="outline"
                   size="sm"

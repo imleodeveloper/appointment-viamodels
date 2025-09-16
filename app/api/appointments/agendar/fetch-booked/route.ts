@@ -73,11 +73,17 @@ export async function POST(request: NextRequest) {
 
     const blocked: string[] = [];
 
+    const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
     for (const slot of daySlots) {
       const start = parseTimeToMinutes(slot);
       const end = start + serviceDuration;
 
       if (end > 24 * 60) {
+        blocked.push(slot);
+        continue;
+      }
+
+      if (start < nowMinutes) {
         blocked.push(slot);
         continue;
       }

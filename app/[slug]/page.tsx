@@ -222,13 +222,9 @@ export default function HomePage() {
   useEffect(() => {
     if (!userBusiness || professionals.length === 0 || photosLoaded) return;
 
-    const fetchPhotos = async () => {
-      await fetchBusinessPhoto();
-      await fetchProfessionalPhotos();
-      setPhotosLoaded(true); // marca que já carregou as fotos
-    };
-
-    fetchPhotos();
+    fetchBusinessPhoto();
+    fetchProfessionalPhotos();
+    setPhotosLoaded(true); // marca que já carregou as fotos
   }, [userBusiness, professionals, photosLoaded]);
 
   const fetchBusinessPhoto = async () => {
@@ -236,21 +232,26 @@ export default function HomePage() {
 
     const photoPath = userBusiness.photo_business;
     const bucketName = "photos_business";
-    const encodedPath = photoPath.split(`${bucketName}/`)[1];
-    const path = decodeURIComponent(encodedPath);
+    const path = photoPath.includes(bucketName)
+      ? photoPath.split(`${bucketName}/`)[1]
+      : photoPath;
 
-    const { data, error } = await supabase.storage
-      .from("photos_business")
-      .createSignedUrl(path, 60 * 60); // 1h de expiração
+    const response = await fetch("/api/home/fetch-business-photo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, bucketName }),
+    });
 
-    if (error) {
-      console.error("Erro ao gerar signed URL da empresa:", error);
+    const data = await response.json();
+    if (!response.ok) {
+      console.error("Erro ao buscar foto da empresa:", data.message);
+      alert(data.message);
       return;
     }
 
     setUserBusiness((prev) => ({
       ...prev,
-      photo_business: data?.signedUrl || null,
+      photo_business: data.signedUrl || null,
     }));
   };
 
@@ -265,12 +266,16 @@ export default function HomePage() {
         const encodedPath = photoPath.split(`${bucketName}/`)[1];
         const path = decodeURIComponent(encodedPath);
 
-        const { data, error } = await supabase.storage
-          .from("photos_professionals")
-          .createSignedUrl(path, 60 * 60);
+        const response = await fetch("/api/home/fetch-business-photo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path, bucketName }),
+        });
 
-        if (error) {
-          console.error("Erro ao gerar signed URL:", error);
+        const data = await response.json();
+        if (!response.ok) {
+          console.error("Erro ao buscar foto da empresa:", data.message);
+          alert(data.message);
           return prof;
         }
 
@@ -323,7 +328,7 @@ export default function HomePage() {
       <Header />
       <main className="w-full min-h-screen container px-4 py-8">
         <article className="w-full flex justify-start items-center gap-12 flex-col">
-          <div className="w-full flex justify-start items-start gap-4">
+          <div className="w-full flex flex-col md:flex-row justify-start items-start gap-4">
             <div className="flex relative w-40 h-40 overflow-hidden justify-center items-center bg-purple-300 shadow-xl rounded-full">
               {userBusiness.photo_business ? (
                 <Image
