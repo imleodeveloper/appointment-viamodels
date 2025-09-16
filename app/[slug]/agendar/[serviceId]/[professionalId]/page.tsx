@@ -159,6 +159,7 @@ export default function SelectDateTimePage() {
             date: selectedDate,
             professionalId,
             timeSelect,
+            serviceId,
           }),
         }
       );
@@ -170,6 +171,13 @@ export default function SelectDateTimePage() {
         setLoading(false);
         return;
       }
+
+      sessionStorage.setItem(
+        "appointmentData",
+        JSON.stringify(data.appointmentData)
+      );
+      router.push(`/${slug}/confirmar-agendamento`);
+      setLoading(false);
     } catch (error) {
       console.error(
         "Não foi possível fazer o agendamento em sistema, erro interno:",
@@ -188,7 +196,7 @@ export default function SelectDateTimePage() {
       const response = await fetch("/api/appointments/agendar/fetch-booked", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: selectedDate, professionalId }),
+        body: JSON.stringify({ date: selectedDate, professionalId, serviceId }),
       });
 
       const data = await response.json();
@@ -245,11 +253,16 @@ export default function SelectDateTimePage() {
     return available;
   };
 
+  function startOfDayLocal(date: Date) {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
   function getNext15Days(datesAndTimes: WeekAvailability) {
     const days: { date: Date; hasAvailability: boolean }[] = [];
 
     for (let i = 0; i < 15; i++) {
-      const date = addDays(new Date(), i);
+      const date = startOfDayLocal(addDays(new Date(), i));
       const jsDay = date.getDay();
       const daysOnWeek = jsDay === 0 ? 6 : jsDay - 1;
       const hasAvailability = (datesAndTimes[daysOnWeek] ?? []).length > 0;
@@ -396,7 +409,8 @@ export default function SelectDateTimePage() {
 
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
             {timeSlots.map((time) => {
-              const isBooked = bookedTimes.includes(time);
+              const timeFormatted = `${time}:00`;
+              const isBooked = bookedTimes.includes(timeFormatted);
               return (
                 <Button
                   variant="outline"

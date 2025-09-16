@@ -94,7 +94,7 @@ export default function ConfirmAppointmentPage() {
   };
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr + "T00:00:00");
+    const date = new Date(dateStr);
     return date.toLocaleDateString("pt-BR", {
       weekday: "long",
       day: "2-digit",

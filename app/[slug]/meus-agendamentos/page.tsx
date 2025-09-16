@@ -11,6 +11,7 @@ import {
   Phone,
   X,
   CheckCircle,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -208,6 +209,14 @@ export default function MyAppointmentsPage() {
       <Header />
 
       <main className="max-w-4xl mx-auto px-4 py-8">
+        <Button
+          variant="outline"
+          onClick={() => (window.location.href = `/${slug}/`)}
+          className="mb-4 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Voltar
+        </Button>
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Meus Agendamentos
