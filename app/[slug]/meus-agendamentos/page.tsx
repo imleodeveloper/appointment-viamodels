@@ -374,6 +374,24 @@ export default function MyAppointmentsPage() {
             )}
           </div>
         )}
+
+        <Card className="bg-white dark:bg-gray-800 mt-8">
+          <CardContent className="p-8 text-center">
+            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Quer fazer um novo agendamento?
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
+              Selecione o serviço e profissional de sua preferência.
+            </p>
+            <Link href={`/${slug}/`}>
+              <Button className="bg-main-purple hover:bg-sub-background text-white hover:text-black">
+                <Calendar className="h-4 w-4 mr-2" />
+                Fazer Novo Agendamento
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

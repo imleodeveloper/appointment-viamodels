@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { JSX, useEffect, useState } from "react";
 import {
   Clock,
   ArrowRight,
@@ -10,6 +10,8 @@ import {
   PhoneCall,
   X,
   User,
+  Instagram,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,6 +42,20 @@ type DatesAndTimes = Record<number, Interval[]>;
 interface Props {
   datesAndTimes: DatesAndTimes;
 }
+
+const ICONS: Record<string, JSX.Element> = {
+  instagram: <Instagram className="w-5 h-5 text-pink-500" />,
+  site: <Globe className="w-5 h-5 text-blue-500" />,
+  onlyfans: (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 512 512"
+      className="w-4 h-4 text-blue-500"
+    >
+      <path d="M256 0C114.6 0 0 114.6 0 256s114.6 256 256 256 256-114.6 256-256S397.4 0 256 0zM256 464c-114.9 0-208-93.1-208-208s93.1-208 208-208 208 93.1 208 208-93.1 208-208 208z" />
+    </svg>
+  ),
+};
 
 export default function HomePage() {
   const [photosLoaded, setPhotosLoaded] = useState(false);
@@ -546,6 +562,42 @@ export default function HomePage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+              {userBusiness.links && (
+                <div className="w-full flex flex-col justify-start items-start gap-2">
+                  <span className="text-xl font-semibold text-main-purple">
+                    Links
+                  </span>
+                  <div className="w-full flex flex-col justify-start items-start gap-2">
+                    {userBusiness.links.map((link, index) => {
+                      const linkHasAtSymbol = link.includes("@");
+                      let l = link;
+                      let icon = "";
+                      if (linkHasAtSymbol) {
+                        l = `https://www.instagram.com/${l.replace(/@/g, "")}`;
+                        icon = "instagram";
+                      }
+                      const linkHasOnlyFans = l.includes("onlyfans.com");
+                      if (linkHasOnlyFans) {
+                        icon = "onlyfans";
+                      }
+                      if (!linkHasAtSymbol && !linkHasOnlyFans) {
+                        icon = "site";
+                      }
+                      return (
+                        <a
+                          key={index}
+                          href={l}
+                          target="_blank"
+                          className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                        >
+                          {ICONS[icon]}
+                          {l}
+                        </a>
+                      );
+                    })}
                   </div>
                 </div>
               )}
