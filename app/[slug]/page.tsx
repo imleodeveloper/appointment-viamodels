@@ -473,7 +473,7 @@ export default function HomePage() {
           information ? "visible" : "hidden"
         } fixed top-0 left-0 w-full h-screen py-4 flex justify-center items-center bg-black/50 z-10`}
       >
-        <div className="w-full px-6 py-12 max-w-3xl h-[90%] flex flex-col gap-4 justify-start items-start relative overflow-y-auto bg-white dark:bg-gray-900 rounded-md shadow-xl">
+        <div className="w-full px-6 py-12 md:max-w-3xl h-[90%] flex flex-col gap-4 justify-start items-start relative overflow-y-auto bg-white dark:bg-gray-900 rounded-md shadow-xl">
           <span className="text-3xl font-semibold">Informações</span>
           {userBusiness.address && (
             <div className="flex justify-center items-center gap-4">
@@ -506,7 +506,7 @@ export default function HomePage() {
                   <span className="text-xl font-semibold text-main-purple">
                     Horários de Atendimento
                   </span>
-                  <div className="grid grid-cols-2 items-center gap-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 items-center gap-8">
                     {Object.entries(daysWeek).map(([dayIndex, dayName]) => {
                       const intervals =
                         (userBusiness.dates_and_times as DatesAndTimes)?.[
@@ -591,7 +591,7 @@ export default function HomePage() {
                           key={index}
                           href={l}
                           target="_blank"
-                          className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                          className="flex items-center gap-2 text-sm text-blue-600 hover:underline break-all"
                         >
                           {ICONS[icon]}
                           {l}
