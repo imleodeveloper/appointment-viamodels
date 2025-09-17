@@ -73,7 +73,20 @@ export async function POST(request: NextRequest) {
 
     const blocked: string[] = [];
 
+    function formatLocalDate(d: Date) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    const todayStr = formatLocalDate(new Date());
+    // se `date` já vem como "YYYY-MM-DD" do front, não precisa mexer:
+    const dateStr = date.split("T")[0];
+    const isSameDay = dateStr === todayStr;
+
     const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+
     for (const slot of daySlots) {
       const start = parseTimeToMinutes(slot);
       const end = start + serviceDuration;
@@ -83,7 +96,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      if (start < nowMinutes) {
+      if (isSameDay && start < nowMinutes) {
         blocked.push(slot);
         continue;
       }
